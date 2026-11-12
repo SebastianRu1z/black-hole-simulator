@@ -44,3 +44,6 @@ DAY: Final[float] = 86_400.0
 
 JULIAN_YEAR: Final[float] = 365.25 * DAY
 """Julian year, s. The year astronomy uses, for example in the definition of the light-year."""
+
+LIGHT_YEAR: Final[float] = C * JULIAN_YEAR
+"""Light-year, m (exactly 9 460 730 472 580 800 m)."""

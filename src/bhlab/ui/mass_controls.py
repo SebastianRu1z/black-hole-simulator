@@ -1,4 +1,4 @@
-"""Left-hand panel: choosing the black hole's mass.
+"""Left-hand panel section: choosing the black hole's mass.
 
 The mass can be typed (applied with Enter), dragged on a logarithmic slider, or picked from
 presets. Text that is not a positive, finite number is reported and never applied.
@@ -9,7 +9,6 @@ from dataclasses import dataclass
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -91,7 +90,7 @@ def mass_to_text(solar_masses: float) -> str:
     return text
 
 
-class MassControls(QFrame):
+class MassControls(QWidget):
     """Controls for the black hole mass, in solar masses."""
 
     mass_changed = Signal(float)
@@ -103,8 +102,6 @@ class MassControls(QFrame):
 
     def __init__(self, initial_solar_masses: float = 10.0, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setObjectName("controlPanel")
-        self.setFixedWidth(310)
         self._mass = parse_mass_text(repr(float(initial_solar_masses)))
 
         section = QLabel("BLACK HOLE")
@@ -167,7 +164,7 @@ class MassControls(QFrame):
             self.preset_buttons.append(button)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 24, 20, 20)
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
         layout.addWidget(section)
         layout.addSpacing(6)
@@ -181,7 +178,6 @@ class MassControls(QFrame):
         layout.addSpacing(2)
         for button in self.preset_buttons:
             layout.addWidget(button)
-        layout.addStretch(1)
 
         self.mass_edit.editingFinished.connect(self._on_editing_finished)
         self.slider.valueChanged.connect(self._on_slider_changed)

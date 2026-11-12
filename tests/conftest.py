@@ -17,3 +17,15 @@ def qapp():
     from bhlab.ui.app import create_application
 
     return create_application([])
+
+
+@pytest.fixture
+def window(qapp):
+    """A freshly opened main window, laid out and ready to be driven."""
+    from bhlab.ui.main_window import MainWindow
+
+    window = MainWindow()
+    window.show()
+    qapp.processEvents()
+    yield window
+    window.close()

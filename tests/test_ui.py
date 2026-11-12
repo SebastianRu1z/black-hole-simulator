@@ -4,32 +4,12 @@ These tests run on Qt's offscreen platform (see conftest.py), so no window appea
 """
 
 import pytest
+from helpers import type_mass
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
 
 from bhlab.ui.app import run
-from bhlab.ui.main_window import MainWindow
 from bhlab.ui.mass_controls import PRESETS, mass_to_text, parse_mass_text
-
-
-@pytest.fixture
-def window(qapp):
-    window = MainWindow()
-    window.show()
-    yield window
-    window.close()
-
-
-def type_mass(window, text, *, press_enter=True):
-    """Replace the content of the mass field by typing, as a user would."""
-    edit = window.controls.mass_edit
-    edit.setFocus()
-    edit.selectAll()
-    QTest.keyClick(edit, Qt.Key.Key_Delete)
-    QTest.keyClicks(edit, text)
-    if press_enter:
-        QTest.keyClick(edit, Qt.Key.Key_Return)
-
 
 # --- the window ------------------------------------------------------------------------------
 

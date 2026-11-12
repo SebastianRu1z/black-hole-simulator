@@ -18,9 +18,10 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Astronomy",
     "Topic :: Scientific/Engineering :: Physics",
 ]
-# The desktop interface needs Qt. The physics modules (bhlab.constants, bhlab.units,
-# bhlab.formatting) import nothing outside the standard library.
-dependencies = ["PySide6-Essentials>=6.8"]
+# The desktop interface needs Qt and pyqtgraph (real-time 2D graphics on top of Qt).
+# The physics modules (bhlab.constants, bhlab.units, bhlab.formatting) import nothing
+# outside the standard library.
+dependencies = ["PySide6-Essentials>=6.8", "pyqtgraph>=0.13.7"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.8"]
@@ -49,3 +50,7 @@ ignore = ["RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["bhlab"]
+
+[tool.ruff.lint.pep8-naming]
+# Qt event handlers are overridden under their camelCase names.
+extend-ignore-names = ["*Event"]

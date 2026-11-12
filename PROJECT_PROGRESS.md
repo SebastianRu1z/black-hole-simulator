@@ -1,6 +1,7 @@
 # Black Hole Physics Lab — Project Progress
 
-Last updated: 2026-11-12 (Checkpoint 1A approved and merged into `main`; Checkpoint 1B approved to start).
+Last updated: 2026-11-12 (Checkpoint 1A approved, merged and pushed; Checkpoint 1B partly built on branch
+`checkpoint-1b`; the session stopped at the usage limit before 1B was finished or reported).
 
 This file is the single source of truth for where the project stands.
 **Read it first in every new session, then inspect the code. Do not rebuild or overwrite existing work.**
@@ -27,10 +28,10 @@ This file is the single source of truth for where the project stands.
 | Current stage | Stage 1 — working interactive simulation foundation (Newtonian) |
 | Last completed checkpoint | **1A — project skeleton, units module, application window** (built 2026-11-12) |
 | Last approved checkpoint | **1A** (approved by Sebastian on 2026-11-12) |
-| Next checkpoint | 1B — 2D black hole view and camera (approved to start on 2026-11-12; not built yet) |
-| Automated tests | 113 passed, 0 failed, 0 skipped (pytest 9.2.0, Python 3.14.7, 2026-11-12). `ruff check` and `ruff format --check` clean. |
+| Checkpoint in progress | **1B — 2D black hole view and camera.** Code and tests are written and committed on the local branch `checkpoint-1b` (not pushed, not reported, not approved). Built: pyqtgraph map in r_g units with horizon disc, photon-sphere and ISCO circles, labels that hide when zoomed out, grid, pan/zoom/reset, zoom limits, scale bar in r_g and physical units, cursor readout in the status bar, view toggles, scales table moved to a right-hand panel. **Still to do before the 1B report:** (1) add tests for `format_length_auto` and `LIGHT_YEAR`; (2) look at fresh screenshots, because the last grid-opacity and plot-margin tweak was never checked by eye; (3) save `docs/images/checkpoint-1b.png` and update README; (4) update the architecture, verification matrix and known-issues sections below; (5) write the checkpoint report and ask for approval. Known limitation found: panning can change the scale by under 1 % because the axis labels resize the plot area. |
+| Automated tests | 161 passed, 0 failed on branch `checkpoint-1b` (pytest 9.2.0, Python 3.14.7, 2026-11-12); 113 on `main`. `ruff check` clean. |
 | Git | 1A (commit `ccea74b`) is merged into `main`. Each later checkpoint is built on its own branch and merged after approval. |
-| GitHub | Remote `origin` is `SebastianRu1z/black-hole-simulator`, created by Sebastian. On 2026-11-12 Sebastian asked for the approved 1A work to be pushed to it. Push `main` only when Sebastian asks; never push an unapproved checkpoint. Visibility not checked. |
+| GitHub | Remote `origin` is `SebastianRu1z/black-hole-simulator`, created by Sebastian. On 2026-11-12 Sebastian asked for the approved 1A work to be pushed to it; `main` was pushed at commit `d903597`. Push `main` only when Sebastian asks; never push an unapproved checkpoint. Visibility not checked. |
 
 ## What exists today
 

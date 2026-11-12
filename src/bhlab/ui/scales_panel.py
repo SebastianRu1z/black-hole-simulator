@@ -1,4 +1,4 @@
-"""Central panel: the characteristic scales of the chosen black hole, each with its formula."""
+"""Right-hand panel: the characteristic scales of the chosen black hole, each with its formula."""
 
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -14,7 +14,6 @@ from bhlab.formatting import (
     format_time_convenient,
     format_time_si,
 )
-from bhlab.ui.theme import MUTED
 from bhlab.units import BlackHole
 
 
@@ -108,66 +107,64 @@ ROWS: tuple[ScaleRow, ...] = (
 )
 
 _NOTE = (
-    "Every length and time in this table is proportional to the mass. That is why the simulation "
-    "works in geometrized units (G = c = 1), with lengths in r<sub>g</sub>, times in "
-    "t<sub>g</sub> and speeds as fractions of c: one numerical solution then describes a black "
-    "hole of any mass. The three radii are exact results of general relativity for a "
+    "Every length and time here is proportional to the mass. That is why the map does not change "
+    "when you change the mass: it is drawn in units of r<sub>g</sub>, and only the scale bar "
+    "shows the physical size. The three radii are exact results of general relativity for a "
     "non-rotating black hole."
 )
 
 
 class ScalesPanel(QWidget):
-    """A table of the black hole's characteristic scales that follows the chosen mass."""
+    """The black hole's characteristic scales, laid out for a side panel.
+
+    Each quantity takes two lines: its name and SI value, then its formula and the value in a
+    more convenient unit. Hovering over a row explains the quantity.
+    """
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setObjectName("centralPanel")
-        # A plain QWidget only paints a style-sheet background if this attribute is set.
-        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
-        title = QLabel("Characteristic scales")
-        title.setObjectName("pageTitle")
+        section = QLabel("CHARACTERISTIC SCALES")
+        section.setObjectName("sectionLabel")
         self.subtitle = QLabel()
         self.subtitle.setObjectName("pageSubtitle")
+        self.subtitle.setToolTip("Non-rotating, uncharged black hole: mass is its only parameter.")
 
-        card = QFrame()
-        card.setObjectName("card")
-        grid = QGridLayout(card)
-        grid.setContentsMargins(24, 18, 24, 18)
-        grid.setHorizontalSpacing(28)
-        grid.setVerticalSpacing(11)
-        for column, stretch in enumerate((5, 4, 3, 3)):
-            grid.setColumnStretch(column, stretch)
+        grid = QGridLayout()
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setHorizontalSpacing(12)
+        grid.setVerticalSpacing(1)
+        grid.setColumnStretch(0, 1)
 
-        for column, heading in enumerate(("QUANTITY", "FORMULA", "SI UNITS", "CONVENIENT UNITS")):
-            header = QLabel(heading)
-            header.setObjectName("columnHeader")
-            grid.addWidget(header, 0, column)
-
+        right = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         self._values: dict[str, tuple[QLabel, QLabel]] = {}
         for index, row in enumerate(ROWS):
+            first = 3 * index
             separator = QFrame()
             separator.setObjectName("rowSeparator")
-            grid.addWidget(separator, 2 * index + 1, 0, 1, 4)
+            grid.addWidget(separator, first, 0, 1, 2)
+            grid.setRowMinimumHeight(first, 15)
 
-            name = QLabel(
-                f'{row.name}<br><span style="color:{MUTED}; font-size:9pt;">{row.detail}</span>'
-            )
+            name = QLabel(row.name)
             name.setObjectName("quantityName")
             formula = QLabel(row.formula)
             formula.setObjectName("formula")
+            formula.setTextFormat(Qt.TextFormat.RichText)
             si_value = QLabel()
             si_value.setObjectName("valueSi")
             convenient_value = QLabel()
             convenient_value.setObjectName("valueConvenient")
 
-            for column, label in enumerate((name, formula, si_value, convenient_value)):
-                label.setTextFormat(
-                    Qt.TextFormat.RichText if column < 2 else Qt.TextFormat.PlainText
-                )
-                label.setToolTip(row.tooltip)
-                grid.addWidget(label, 2 * index + 2, column)
+            grid.addWidget(name, first + 1, 0)
+            grid.addWidget(si_value, first + 1, 1, right)
+            grid.addWidget(formula, first + 2, 0)
+            grid.addWidget(convenient_value, first + 2, 1, right)
+
+            tooltip = f"{row.name} ({row.detail}). {row.tooltip}"
+            for label in (name, formula, si_value, convenient_value):
+                label.setToolTip(tooltip)
             for label in (si_value, convenient_value):
+                label.setTextFormat(Qt.TextFormat.PlainText)
                 # Let the numbers be selected and copied.
                 label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
             self._values[row.key] = (si_value, convenient_value)
@@ -178,20 +175,19 @@ class ScalesPanel(QWidget):
         note.setWordWrap(True)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(34, 28, 34, 24)
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
-        layout.addWidget(title)
+        layout.addWidget(section)
         layout.addWidget(self.subtitle)
-        layout.addSpacing(16)
-        layout.addWidget(card)
+        layout.addSpacing(4)
+        layout.addLayout(grid)
         layout.addSpacing(14)
         layout.addWidget(note)
-        layout.addStretch(1)
 
     def set_black_hole(self, black_hole: BlackHole) -> None:
         """Recompute every row for ``black_hole``."""
         self.subtitle.setText(
-            f"Non-rotating (Schwarzschild) black hole of {format_mass_solar(black_hole.mass_solar)}"
+            f"Schwarzschild black hole  ·  {format_mass_solar(black_hole.mass_solar)}"
         )
         for row in ROWS:
             si_label, convenient_label = self._values[row.key]

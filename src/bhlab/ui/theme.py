@@ -29,30 +29,38 @@ _PALETTE = {
 
 # Colours are written as @NAME and substituted below, so the sheet stays readable.
 _STYLE_TEMPLATE = """
-QMainWindow, QWidget#centralPanel { background: @BACKGROUND; }
+QMainWindow, QWidget#viewPanel { background: @BACKGROUND; }
+QMainWindow::separator { width: 0px; height: 0px; }
 QWidget { color: @TEXT; }
 QLabel { background: transparent; }
 
 QFrame#controlPanel { background: @PANEL; border: none; border-right: 1px solid @BORDER; }
-QFrame#card { background: @CARD; border: 1px solid @BORDER; border-radius: 10px; }
+QFrame#infoPanel { background: @PANEL; border: none; border-left: 1px solid @BORDER; }
 QFrame#rowSeparator { background: @BORDER; border: none; min-height: 1px; max-height: 1px; }
 
-QLabel#pageTitle { font-size: 20pt; font-weight: 600; }
-QLabel#pageSubtitle { color: @MUTED; font-size: 10.5pt; }
+QLabel#pageSubtitle { color: @MUTED; font-size: 10pt; }
 QLabel#sectionLabel { color: @ORANGE; font-size: 8.5pt; font-weight: 700; }
 QLabel#fieldLabel { font-size: 10.5pt; font-weight: 600; }
-QLabel#columnHeader { color: @MUTED; font-size: 8.5pt; font-weight: 700; }
 QLabel#quantityName { font-size: 10.5pt; }
 QLabel#formula {
-    color: @PURPLE; font-family: "Cambria", "Times New Roman", serif; font-size: 13pt;
+    color: @PURPLE; font-family: "Cambria", "Times New Roman", serif; font-size: 12pt;
 }
-QLabel#valueSi, QLabel#valueConvenient { font-size: 12pt; font-weight: 600; }
+QLabel#valueSi, QLabel#valueConvenient { font-size: 11pt; font-weight: 600; }
 QLabel#valueSi { color: @ORANGE; }
 QLabel#valueConvenient { color: @BLUE; }
 QLabel#unitLabel { color: @MUTED; font-size: 12pt; }
-QLabel#note, QLabel#sliderEnd, QLabel#helperLabel { color: @MUTED; }
+QLabel#note, QLabel#sliderEnd, QLabel#helperLabel, QLabel#viewCaption { color: @MUTED; }
 QLabel#sliderEnd { font-size: 8.5pt; }
 QLabel#helperLabel[error="true"] { color: @ERROR; }
+QLabel#scaleBarLabel { color: @TEXT; font-size: 9.5pt; }
+
+QCheckBox { spacing: 9px; }
+QCheckBox::indicator {
+    width: 13px; height: 13px; border: 1px solid @MUTED; border-radius: 3px;
+    background: @BACKGROUND;
+}
+QCheckBox::indicator:checked { background: @ORANGE; border: 1px solid @ORANGE; }
+QCheckBox::indicator:hover { border: 1px solid @TEXT; }
 
 QLineEdit {
     background: @BACKGROUND; border: 1px solid @BORDER; border-radius: 6px;
@@ -69,6 +77,7 @@ QPushButton {
 QPushButton:hover { border: 1px solid @MUTED; }
 QPushButton:pressed { background: @BORDER; }
 QPushButton:checked { border: 1px solid @ORANGE; color: @ORANGE; }
+QPushButton#viewButton { padding: 4px 12px; text-align: center; min-width: 14px; }
 
 QSlider::groove:horizontal { height: 4px; background: @BORDER; border-radius: 2px; }
 QSlider::sub-page:horizontal { background: @ORANGE; border-radius: 2px; }

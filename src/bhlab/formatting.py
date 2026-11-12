@@ -6,7 +6,7 @@ window, on the command line and in exported reports.
 
 import math
 
-from bhlab.constants import AU, DAY, JULIAN_YEAR
+from bhlab.constants import AU, DAY, JULIAN_YEAR, LIGHT_YEAR
 
 _SUPERSCRIPT = str.maketrans("-0123456789", "⁻⁰¹²³⁴⁵⁶⁷⁸⁹")
 
@@ -62,6 +62,19 @@ def format_length_si(metres: float, sig: int = 4) -> str:
 def format_length_au(metres: float, sig: int = 4) -> str:
     """A length in astronomical units."""
     return f"{format_number(metres / AU, sig)} AU"
+
+
+def format_length_auto(metres: float, sig: int = 4) -> str:
+    """A length in the unit that reads best for any black hole mass.
+
+    Light-years from 0.1 ly, astronomical units from 0.01 AU, otherwise mm, m or km.
+    """
+    size = abs(metres)
+    if size >= 0.1 * LIGHT_YEAR:
+        return f"{format_number(metres / LIGHT_YEAR, sig)} ly"
+    if size >= 0.01 * AU:
+        return f"{format_number(metres / AU, sig)} AU"
+    return format_length_si(metres, sig)
 
 
 def format_time_si(seconds: float, sig: int = 4) -> str:
