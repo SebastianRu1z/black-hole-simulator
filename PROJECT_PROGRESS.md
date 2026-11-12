@@ -1,6 +1,6 @@
 # Black Hole Physics Lab — Project Progress
 
-Last updated: 2026-11-12 (Checkpoint 1A built and tested; awaiting Sebastian's approval).
+Last updated: 2026-11-12 (Checkpoint 1A approved and merged into `main`; Checkpoint 1B approved to start).
 
 This file is the single source of truth for where the project stands.
 **Read it first in every new session, then inspect the code. Do not rebuild or overwrite existing work.**
@@ -25,12 +25,12 @@ This file is the single source of truth for where the project stands.
 | Item | State |
 |---|---|
 | Current stage | Stage 1 — working interactive simulation foundation (Newtonian) |
-| Last completed checkpoint | **1A — project skeleton, units module, application window** (built 2026-11-12, awaiting approval) |
-| Last approved checkpoint | none yet |
-| Next proposed checkpoint | 1B — 2D black hole view and camera (not started; needs approval) |
+| Last completed checkpoint | **1A — project skeleton, units module, application window** (built 2026-11-12) |
+| Last approved checkpoint | **1A** (approved by Sebastian on 2026-11-12) |
+| Next checkpoint | 1B — 2D black hole view and camera (approved to start on 2026-11-12; not built yet) |
 | Automated tests | 113 passed, 0 failed, 0 skipped (pytest 9.2.0, Python 3.14.7, 2026-11-12). `ruff check` and `ruff format --check` clean. |
-| Git | 1A is one local commit on branch `checkpoint-1a`, **not pushed**. `main` is Sebastian's commit `71f0514` ("First Stages, 1A": the prototypes and the roadmap, before any 1A code). |
-| GitHub | Sebastian published `main` on 2026-11-12 as `SebastianRu1z/black-hole-simulator` (remote `origin`). Visibility not checked. Claude has pushed nothing. |
+| Git | 1A (commit `ccea74b`) is merged into `main`. Each later checkpoint is built on its own branch and merged after approval. |
+| GitHub | Remote `origin` is `SebastianRu1z/black-hole-simulator`, created by Sebastian. On 2026-11-12 Sebastian asked for the approved 1A work to be pushed to it. Push `main` only when Sebastian asks; never push an unapproved checkpoint. Visibility not checked. |
 
 ## What exists today
 
@@ -129,7 +129,7 @@ the verification matrix below (§36), and references that are checked before the
 
 | # | Checkpoint | Delivers | Status |
 |---|---|---|---|
-| 1A | Project skeleton, units module, application window | package `bhlab`, tested constants/units/formatting modules, PySide6 window showing live characteristic scales for a chosen mass, pytest and ruff wired up | **built 2026-11-12, awaiting approval** |
+| 1A | Project skeleton, units module, application window | package `bhlab`, tested constants/units/formatting modules, PySide6 window showing live characteristic scales for a chosen mass, pytest and ruff wired up | **approved 2026-11-12** |
 | 1B | 2D black hole view and camera | pyqtgraph viewport: horizon disc, photon-sphere and ISCO circles (labelled as GR reference radii the Newtonian engine does not use), scale bar, pan/zoom/reset, cursor readout; the scales table moves to a side panel | not started |
 | 1C | Newtonian physics engine (headless) | test-particle equations of motion about a point mass; velocity Verlet, RK4, SciPy DOP853 with event detection; orbital elements; pytest checks against Kepler; command-line run | not started |
 | 1D | Particle placement and run controls | click-and-drag placement with a velocity vector, exact numeric inputs, rejection of invalid initial conditions, multiple particles, play/pause/reset/single-step/speed with physics decoupled from frame rate | not started |
@@ -204,6 +204,8 @@ Prototypes:
 - 2026-11-12 — Sebastian chose the project folder, approved starting Checkpoint 1A, and chose to have the
   work on a new branch `checkpoint-1a` rather than on `main`.
 - 2026-11-12 — Sebastian created the git repository and published `main` to GitHub (not done by Claude).
+- 2026-11-12 — Sebastian approved Checkpoint 1A, approved starting Checkpoint 1B, and asked for the work to
+  be committed to GitHub.
 
 ## How to resume in a new session
 
