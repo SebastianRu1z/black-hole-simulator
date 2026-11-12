@@ -1,25 +1,31 @@
 # Black Hole Physics Lab — Project Progress
 
-Last updated: 2026-11-12 (Checkpoint 1A approved, merged and pushed; Checkpoint 1B partly built on branch
-`checkpoint-1b`; the session stopped at the usage limit before 1B was finished or reported).
+Last updated: 2026-11-12, by a later session that inspected the project and updated the documents only.
+Checkpoint 1A is approved, merged and pushed; 1B is built on the local branch `checkpoint-1b`, not yet approved.
 
 This file is the single source of truth for where the project stands.
 **Read it first in every new session, then inspect the code. Do not rebuild or overwrite existing work.**
 
 ## Working agreement (set by Sebastian; applies to every session)
 
-1. One small checkpoint at a time: PLAN → BUILD → TEST → DEMONSTRATE → EXPLAIN → CHECKPOINT REPORT → STOP.
+1. One small checkpoint at a time: PLAN → EXPLAIN → BUILD → TEST → TEACH → REVIEW → STOP. Sebastian changed
+   the process on 2026-11-12; `CLAUDE.md` describes each step and is the authority on these rules.
 2. Ask for approval before writing code. Never begin the next checkpoint without an explicit yes.
    Silence is not approval. Approving one checkpoint does not approve the rest of the stage.
 3. Keep everything that already works working; run the regression tests before each report.
 4. Scientific accuracy before complexity. Nothing is called validated without a test that shows it.
 5. Usage credits are limited: no unrequested features, no unnecessary rewrites.
 6. Nothing goes to GitHub without explicit approval of the account, repository name, visibility and push.
-7. Every checkpoint report has the sections Completed / What I should test / Scientific explanation /
+7. Every checkpoint report has the sections Completed / What I should test / Learning summary (parts A–F of
+   `CLAUDE.md`) / Understanding check /
    Next checkpoint, and ends with: "CHECKPOINT COMPLETE — Awaiting your approval. Do you approve moving to
    the next checkpoint, or would you like to change or improve anything first?"
 8. Each checkpoint is built on its own branch (`checkpoint-1a`, `checkpoint-1b`, …), as Sebastian chose on
    2026-11-12. `main` holds only approved work: merge a checkpoint branch into `main` after its approval.
+9. Teach the code: explain before building, give a learning summary afterwards, and keep
+   `LEARNING_NOTES.md` current (set by Sebastian on 2026-11-12).
+10. A review reports findings and changes nothing without approval. External skills are inspected,
+    explained and approved before they are installed or run.
 
 ## Current status
 
@@ -28,10 +34,43 @@ This file is the single source of truth for where the project stands.
 | Current stage | Stage 1 — working interactive simulation foundation (Newtonian) |
 | Last completed checkpoint | **1A — project skeleton, units module, application window** (built 2026-11-12) |
 | Last approved checkpoint | **1A** (approved by Sebastian on 2026-11-12) |
-| Checkpoint in progress | **1B — 2D black hole view and camera.** Code and tests are written and committed on the local branch `checkpoint-1b` (not pushed, not reported, not approved). Built: pyqtgraph map in r_g units with horizon disc, photon-sphere and ISCO circles, labels that hide when zoomed out, grid, pan/zoom/reset, zoom limits, scale bar in r_g and physical units, cursor readout in the status bar, view toggles, scales table moved to a right-hand panel. **Still to do before the 1B report:** (1) add tests for `format_length_auto` and `LIGHT_YEAR`; (2) look at fresh screenshots, because the last grid-opacity and plot-margin tweak was never checked by eye; (3) save `docs/images/checkpoint-1b.png` and update README; (4) update the architecture, verification matrix and known-issues sections below; (5) write the checkpoint report and ask for approval. Known limitation found: panning can change the scale by under 1 % because the axis labels resize the plot area. |
+| Checkpoint in progress | **1B — 2D black hole view and camera.** Code and tests are written and committed on the local branch `checkpoint-1b` (not pushed, not reported, not approved). Built: pyqtgraph map in r_g units with horizon disc, photon-sphere and ISCO circles, labels that hide when zoomed out, grid, pan/zoom/reset, zoom limits, scale bar in r_g and physical units, cursor readout in the status bar, view toggles, scales table moved to a right-hand panel. The verified state and the remaining work are listed under "Checkpoint 1B: state and remaining work" below. |
 | Automated tests | 161 passed, 0 failed on branch `checkpoint-1b` (pytest 9.2.0, Python 3.14.7, 2026-11-12); 113 on `main`. `ruff check` clean. |
 | Git | 1A (commit `ccea74b`) is merged into `main`. Each later checkpoint is built on its own branch and merged after approval. |
 | GitHub | Remote `origin` is `SebastianRu1z/black-hole-simulator`, created by Sebastian. On 2026-11-12 Sebastian asked for the approved 1A work to be pushed to it; `main` was pushed at commit `d903597`. Push `main` only when Sebastian asks; never push an unapproved checkpoint. Visibility not checked. |
+
+### Checkpoint 1B: state and remaining work (inspected 2026-11-12, no code changed)
+
+Verified in a fresh session: working tree clean, no stashes, one unpushed commit (`7e9526b`) on
+`checkpoint-1b`. 161 tests pass (architecture 1, constants 5, formatting 29, interface 38, units 40,
+viewport 48) and are stable over repeated runs; `ruff check` and `ruff format --check` are clean. An
+offscreen render shows every 1B feature working, and the lengths it displays agree with hand calculations.
+Moving the shared test fixture and helper out of `tests/test_ui.py` weakened no assertion.
+
+Remaining before the 1B report:
+
+1. Tests for `format_length_auto` and `LIGHT_YEAR`, which are only exercised indirectly today.
+2. The plot area changes size while panning (measurements below): fix it or accept it. Sebastian decides.
+3. Sebastian looks at the real window (`python -m bhlab`). In the offscreen render the grid is very faint
+   and the y axis does not label ±10; the grid-opacity and margin tweak has still not been judged by eye.
+4. Save `docs/images/checkpoint-1b.png` and update the README, which still describes 1A only.
+5. Update the architecture, verification-matrix and known-issues sections of this file.
+6. Create `LEARNING_NOTES.md`, covering 1A and 1B.
+7. Write the checkpoint report in the new format and ask for approval.
+
+Plot area and panning (measured 2026-11-12). The width of pyqtgraph's left axis follows its widest tick
+label, so it changes as the map is panned: 40 px near the origin, 58 px at y ≈ −80 000 r_g. The map area
+changes width by the same amount. In the default 1440 × 800 window the map is limited by its height, so
+the scale stays exactly the same and only the visible width changes, by up to 2.6 %. Where the map is
+limited by its width the scale itself changes: by up to 4.5 % in the test environment (no fonts there, so
+the map area is almost square). The earlier note in this file said "under 1 %"; the measured changes are
+larger. The scale bar and the cursor readout stay correct throughout, because both are recomputed from the
+live transform. Giving the left axis a fixed width (tried at run time with 64 px, not committed) removes
+the effect completely. `test_dragging_with_the_left_button_pans_the_map` accepts a 1 % change of the
+visible spans for this reason; tighten it once the axis width is fixed.
+
+Screenshots: Qt's offscreen platform finds no fonts on this machine and draws every character as a box.
+Setting `QT_QPA_FONTDIR=C:\Windows\Fonts` before starting Python gives readable text.
 
 ## What exists today
 
@@ -68,8 +107,9 @@ into the package, with proper tests, when those stages are reached.
 - `.venv/` was created by Sebastian in the project folder. Installed: PySide6-Essentials 6.12.0,
   shiboken6 6.12.0, pytest 9.2.0, ruff 0.17.4, numpy 2.5.4, matplotlib 3.11.2, SciPy 1.18.1 (SciPy is
   installed but not yet a declared dependency; it becomes one in 1C).
-- GitHub CLI (`gh`) is not installed.
-- pyqtgraph 0.14.0 resolves for this Python (pip dry run) but is not installed; it is needed from 1B.
+- GitHub CLI (`gh`) is installed (seen on 2026-11-12 in `C:\Program Files\GitHub CLI`; not used, and its
+  login state was not checked). Node.js is not installed.
+- pyqtgraph 0.14.0 is installed and has been a declared dependency since 1B.
 
 ## Architecture
 
@@ -112,7 +152,7 @@ Spec sections are numbered as in Sebastian's specification (§1–§51).
 
 | Stage | Scope | Spec | Experiments | Status |
 |---|---|---|---|---|
-| 1 | Interactive foundation: Newtonian engine, 2D view, particle placement, measurements, tests | §2A, §5, §6, §7, §11–§13 (Newtonian parts) | 1; Newtonian parts of 8, 9 | in progress (1A built) |
+| 1 | Interactive foundation: Newtonian engine, 2D view, particle placement, measurements, tests | §2A, §5, §6, §7, §11–§13 (Newtonian parts) | 1; Newtonian parts of 8, 9 | in progress (1A approved; 1B built, not yet approved) |
 | 2 | Schwarzschild relativity: timelike and null geodesics, ISCO, photon sphere, time dilation, radial infall, Newton vs GR, validation | §2B, §8, §9, §13 | 2–7, 10 | not started (prototypes exist) |
 | 3 | RF communication physics: emitters/receivers, null-geodesic signal paths, gravitational and Doppler shift via g = (k·u)_obs/(k·u)_em, Shapiro delay, received-signal analysis | §43, §26 | EE 1, EE 2 | not started |
 | 4 | Kerr black holes: geodesics with E, L_z, Carter constant; horizons, ergosphere, frame dragging, prograde/retrograde ISCO, orbital frequencies; Penrose process as analytic demonstration | §23, §24, §31, §36 | 11, 12, 20 | not started |
@@ -131,7 +171,7 @@ the verification matrix below (§36), and references that are checked before the
 | # | Checkpoint | Delivers | Status |
 |---|---|---|---|
 | 1A | Project skeleton, units module, application window | package `bhlab`, tested constants/units/formatting modules, PySide6 window showing live characteristic scales for a chosen mass, pytest and ruff wired up | **approved 2026-11-12** |
-| 1B | 2D black hole view and camera | pyqtgraph viewport: horizon disc, photon-sphere and ISCO circles (labelled as GR reference radii the Newtonian engine does not use), scale bar, pan/zoom/reset, cursor readout; the scales table moves to a side panel | not started |
+| 1B | 2D black hole view and camera | pyqtgraph viewport: horizon disc, photon-sphere and ISCO circles (labelled as GR reference radii the Newtonian engine does not use), scale bar, pan/zoom/reset, cursor readout; the scales table moves to a side panel | built on `checkpoint-1b`; not yet reported or approved |
 | 1C | Newtonian physics engine (headless) | test-particle equations of motion about a point mass; velocity Verlet, RK4, SciPy DOP853 with event detection; orbital elements; pytest checks against Kepler; command-line run | not started |
 | 1D | Particle placement and run controls | click-and-drag placement with a velocity vector, exact numeric inputs, rejection of invalid initial conditions, multiple particles, play/pause/reset/single-step/speed with physics decoupled from frame rate | not started |
 | 1E | Trails and live measurements | orbital trails, predicted path, selected-object panel (r, v, E, L, e, a, T, periapsis, apoapsis, status), unit switching, warning where the Newtonian model stops being trustworthy | not started |
@@ -187,6 +227,17 @@ Prototypes:
 - Renderer needs 70–90 s for 960 × 540 (pure NumPy).
 - The sandbox window has never been driven interactively by a test.
 
+## Review skills (inspected 2026-11-12; none installed; installing them awaits Sebastian's approval)
+
+Both are plain Markdown instructions: no scripts, no hooks, no packages to install.
+
+| Skill | Source read | What it does | Fit and conditions |
+|---|---|---|---|
+| `improve` | `shadcn/improve` at commit `cac56e1` (2026-09-12): `SKILL.md` and three reference files, MIT | Read-only audit in nine categories (bugs, security, performance, tests, tech debt, dependencies, tooling, docs, direction). Returns a ranked findings table, then writes a plan file into `plans/` for each finding chosen | Suits Python. Has no physics or numerics category: give it those as focus hints. Use its `quick` level, because the repository is small. `execute` (another model edits code in a git worktree) and `--issues` (publishes plans on GitHub) need explicit approval each time. Its documented installer, `npx skills add`, needs Node.js and runs third-party code: copy the four files instead |
+| `thermo-nuclear-code-quality-review` | `cursor/plugins`, folder `thermos`, last changed in commit `dc41543` (2026-05-28): one `SKILL.md`, MIT | A strict maintainability rubric for a branch's diff: needless abstraction, tangled branching, files over 1 000 lines, logic in the wrong layer | Written for Cursor, mostly with TypeScript in mind. Its file format is the one Claude Code skills use, so it should load once copied by hand (not yet tried). Little to find while the largest file has 325 lines. Its prompt tells the reviewer to restructure code: here it only reports |
+
+Claude Code's own `/code-review`, `/security-review` and `/simplify` are available without installing anything.
+
 ## Open decisions
 
 - Repository name: the GitHub repository is `black-hole-simulator`; the specification planned
@@ -207,6 +258,11 @@ Prototypes:
 - 2026-11-12 — Sebastian created the git repository and published `main` to GitHub (not done by Claude).
 - 2026-11-12 — Sebastian approved Checkpoint 1A, approved starting Checkpoint 1B, and asked for the work to
   be committed to GitHub.
+- 2026-11-12 — After the first conversation grew to about 500K tokens, Sebastian set new permanent rules:
+  recover context from the files instead of the conversation; teach the code (explanation before building,
+  learning summary and understanding check after, `LEARNING_NOTES.md`); use the `improve` and
+  `thermo-nuclear-code-quality-review` skills only after inspection and approval; and the process
+  PLAN → EXPLAIN → BUILD → TEST → TEACH → REVIEW → STOP. All of it is recorded in `CLAUDE.md`.
 
 ## How to resume in a new session
 
