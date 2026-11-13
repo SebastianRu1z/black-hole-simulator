@@ -4,8 +4,9 @@ A growing technical reference for understanding this project: the physics, the m
 Python and the engineering ideas behind the code. It is organised by topic, not by date. Each
 entry names the checkpoint that introduced it, and every new checkpoint adds to the sections below.
 
-Last updated: 2026-11-12, Checkpoint 1B. Covered so far: 1A (units, constants, the window) and 1B
-(the 2D map). Nothing moves in the program yet. Orbits arrive in Checkpoint 1C.
+Last updated: 2026-11-12, Checkpoint 1C-1. Covered so far: 1A (units, constants, the window), 1B (the
+2D map) and 1C-1 (the Newtonian engine: equations of motion, RK4, velocity Verlet). Orbits are computed
+and tested, but not yet shown in the window; that is Checkpoint 1D.
 
 File paths in this document are relative to `src/bhlab/` unless they start with `tests/`.
 
@@ -72,6 +73,31 @@ The map shows the orbital plane from above in Schwarzschild coordinates, in whic
 radius r has circumference 2πr. It is not a photograph. Light bends near a black hole, so a camera
 would see a dark shadow of radius 3√3 r_g ≈ 5.2 r_g, about 2.6 times the horizon. Images belong to
 Stage 6.
+
+### 1.6 Newtonian orbits (1C-1)
+
+A test particle (one too light to move the black hole) obeys Newton's law of gravitation:
+
+    d²r/dt² = −GM r / |r|³      becomes      d²r/dt² = −r / |r|³   with GM = 1
+
+The acceleration points at the mass and has size 1/r². Two quantities stay constant along any orbit,
+per unit mass of the particle:
+
+    energy             E = v²/2 − 1/r       negative for a bound orbit, E = −1/(2a)
+    angular momentum   L = x v_y − y vₓ     positive for anticlockwise motion
+
+Useful results for checking the program (all with GM = 1):
+
+| Result | Formula | Example, a = r = 100 |
+|---|---|---|
+| Circular speed | v = √(1/r) | 0.1 c |
+| Kepler's third law | T = 2π a^(3/2) | 6283 GM/c³ = 0.3095 s for 10 M☉, 1.54 days for Sgr A* |
+| Vis-viva equation | v² = 2/r − 1/a | at periapsis r = 50 of an a = 100 orbit: v = √0.03 = 0.1732 c |
+| Ellipse | periapsis a(1 − e), apoapsis a(1 + e) | e = 0.5: 50 and 150 |
+
+Code: `physics/newtonian.py`. The model is wrong close to a black hole. It has no horizon and no
+ISCO, and at r = 100 the particle already moves at a tenth of the speed of light. It is the starting
+point that general relativity corrects in Stage 2.
 
 ## 2. Mathematics
 
@@ -141,6 +167,61 @@ Python's `float` is a 64-bit binary number with 53 bits of precision, about 16 d
   1.2 × 10⁻¹⁰ apart, so a difference of 0.03 between two such numbers is good to only 4 parts in
   10⁹. One of the map tests reads the scale in this way and allows for it. That is a numerical
   error: the scale itself had not changed.
+
+### 2.7 From a second-order equation to a first-order system (1C-1)
+
+Numerical solvers expect dy/dt = f(t, y), with only first derivatives. A second-order equation is
+rewritten by treating the velocity as an unknown of its own. With the state y = (x, y, vₓ, v_y):
+
+    dx/dt = vₓ      dy/dt = v_y      dvₓ/dt = aₓ(x, y)      dv_y/dt = a_y(x, y)
+
+Two second-order equations become four first-order ones. This is the state-space form used in
+control engineering, with the state vector holding positions and velocities instead of capacitor
+voltages and inductor currents. In code: `first_order_system` in `solvers/fixed_step.py`.
+
+### 2.8 Runge–Kutta 4 (1C-1)
+
+Euler's method, y(t + h) ≈ y + h f(t, y), follows the slope at the start of the step all the way to
+its end. On an orbit it spirals outward, because every step leaves the circle along the tangent.
+RK4 samples the slope four times and averages them with weights 1, 2, 2, 1:
+
+    k₁ = f(t, y),   k₂ = f(t + h/2, y + h k₁/2),   k₃ = f(t + h/2, y + h k₂/2),   k₄ = f(t + h, y + h k₃)
+    y(t + h) ≈ y + h (k₁ + 2k₂ + 2k₃ + k₄) / 6
+
+Two checks show the idea:
+- For dy/dt = y, one step reproduces e^h = 1 + h + h²/2 + h³/6 + h⁴/24 + … up to the h⁴ term.
+- For dy/dt = g(t), RK4 becomes Simpson's rule, which integrates cubics exactly.
+
+### 2.9 Velocity Verlet and symplectic integrators (1C-1)
+
+    v_half = v + (h/2) a(x)          a half kick
+    x_new  = x + h v_half             a full drift
+    v_new  = v_half + (h/2) a(x_new)  another half kick
+
+It costs one force evaluation per step instead of four, and it is only second order. It is
+*symplectic*: each step is an exact motion of a slightly different mechanical system, close to the
+real one. Three consequences, all measured by the tests:
+- The energy error oscillates but does not grow, even over thousands of orbits.
+- For a central force, the angular momentum is conserved exactly. Each kick changes v along x, and
+  x × x = 0; each drift changes x along v, and v × v = 0.
+- At the same step size its energy error can be larger than RK4's (2.7 × 10⁻³ against 2.5 × 10⁻⁶
+  for the test ellipse at 200 steps per orbit). It wins over long times, not per step.
+
+### 2.10 Order of convergence, and the two kinds of error (1C-1)
+
+A method has order p if its error after a fixed time behaves like C·hᵖ. Halving h then divides the
+error by 2ᵖ: 16 for RK4, 4 for Verlet. The program measured 16.65 and 4.00, so p = log₂(ratio)
+gives 4.06 and 2.00. Measuring the order is the standard test that an integrator is implemented
+correctly: a wrong coefficient usually drops the order.
+
+| Kind of error | Example | Cure |
+|---|---|---|
+| Numerical error | energy drifting in an RK4 run | smaller step, better method |
+| Model (physical) error | Newton's theory near a black hole | a better theory (general relativity) |
+| Round-off error | about 10⁻¹⁶ relative per operation | rarely matters here; it limits how small a useful h can be |
+
+A smaller step never fixes a model error. A perfect solution of the Newtonian equations is still a
+wrong description of an orbit at 10 r_g.
 
 ## 3. Python
 
@@ -246,6 +327,44 @@ wrong for a map, and the cure was two settings (`autoExpandTextSpace=False` and 
 - Read what a passing test asserts. The earlier drag test passed only because its tolerance had
   been widened to 1 %.
 
+### 3.7 NumPy arrays (1C-1)
+
+A NumPy array is a block of numbers of one type, and arithmetic applies to every element at once:
+
+```python
+y = np.array([100.0, 0.0, 0.0, 0.1])  # x, y, vx, vy
+y + 0.5 * k1  # element by element, no loop
+states = np.empty((n + 1, 4))  # a table: one row per time step
+states[:, 0]  # the whole x column
+```
+
+This is why `rk4_step` reads almost like the formula. Two habits from this checkpoint:
+- `states.flags.writeable = False` makes a finished result read-only, so nothing can change it by
+  accident. It is the array version of the frozen dataclass.
+- `np.hypot(x, y)` and friends work on whole columns: `np.hypot(states[:, 0], states[:, 1])` gives
+  the radius at every step.
+
+### 3.8 Functions as values, and closures (1C-1)
+
+The solvers do not know about gravity. They receive the force law as a function argument:
+
+```python
+integrate(acceleration, start, step, n_steps, "rk4")  # gravity
+integrate(lambda x: -x, start, 0.2, 20_000, "verlet")  # a spring, or an LC tank
+```
+
+`first_order_system(acceleration)` builds and *returns* a new function `f(t, y)`. The inner function
+remembers the `acceleration` it was made from, even after `first_order_system` has returned. That is
+a closure. It lets one RK4 routine solve any equation of the form d²x/dt² = a(x).
+
+### 3.9 Tests that are allowed to fail (1C-1)
+
+Every tolerance in `tests/test_fixed_step.py` comes from a measurement plus a margin, and the comment
+next to it says what was measured. To check that the tests can catch mistakes, the RK4 weights were
+changed to 1, 1, 3, 1 in a temporary copy: 7 tests failed. Breaking the Verlet velocity update made 5
+fail. A test suite that would pass whatever the code did is worse than none, because it gives false
+confidence.
+
 ## 4. Key functions
 
 | Function | File | Takes | Gives |
@@ -260,6 +379,13 @@ wrong for a map, and the cure was two settings (`autoExpandTextSpace=False` and 
 | `describe_cursor` | `ui/main_window.py` | x and y in r_g, black hole | the readout text |
 | `BlackHoleView.zoom_by` | `ui/viewport.py` | zoom factor | moves the camera |
 | `BlackHoleView.pixels_per_unit` | `ui/viewport.py` | nothing | the scale s, in pixels per r_g |
+| `acceleration` | `physics/newtonian.py` | position (x, y) | −r/r³ as an array; refuses r = 0 |
+| `specific_energy`, `specific_angular_momentum` | `physics/newtonian.py` | a state (x, y, vₓ, v_y) | E and L |
+| `circular_orbit` | `physics/newtonian.py` | radius r | the state (r, 0, 0, √(1/r)) |
+| `kepler_period` | `physics/newtonian.py` | semi-major axis a | 2π a^(3/2) |
+| `rk4_step` | `solvers/fixed_step.py` | f, t, y, h | y at t + h |
+| `velocity_verlet_step` | `solvers/fixed_step.py` | force law, x, v, a, h | new x, v and a |
+| `integrate` | `solvers/fixed_step.py` | force law, start state, h, number of steps, method | a read-only `Trajectory` |
 
 `format_length_auto` without its docstring, as an example of a rule written as code:
 
@@ -293,6 +419,17 @@ Only connections that are real are listed here.
 - **Finite word length.** A 64-bit float has a 53-bit mantissa, as a converter has a fixed number of
   bits. Round-off and the loss of digits in subtraction are the effects that also limit fixed-point
   filters.
+- **The LC tank (1C-1).** An ideal LC circuit obeys d²q/dt² = −q/(LC), the same equation as
+  d²x/dt² = −x in the test of the two integrators. RK4 loses a little energy every step, as if a small
+  resistor were in the circuit: after 640 periods at h = 0.2 the energy has fallen from 0.5 to 0.4912.
+  Verlet keeps it between 0.495 and 0.5 indefinitely. A circuit simulator that damps a lossless tank
+  is showing you its integrator, not your circuit.
+- **SPICE (1C-1).** A transient analysis solves the circuit's state equations step by step, exactly as
+  `integrate` does for an orbit. SPICE uses implicit methods (trapezoidal, Gear) and adjusts the step
+  to an error tolerance, which is where Checkpoint 1C-2 goes with DOP853.
+- **Step size as sampling (1C-1).** A step of h samples the motion h apart. Too coarse a step gives
+  wrong answers or unstable growth, much as too low a sample rate does in a digital filter. At 250
+  steps per orbit Verlet already misses the start point by 2.8 r_g after one orbit.
 - **Not built yet.** Time dilation as a frequency shift, signal paths along light rays, spectra and
   link budgets come in Stages 3 and 5.
 
@@ -319,17 +456,38 @@ Predict first, then start the program with `.venv\Scripts\python.exe -m bhlab` a
 8. Floating point, in a Python prompt: `0.1 + 0.2 == 0.3`, then `float(2**53 + 1) == 2**53 + 1`.
    Both are `False`. Explain each to yourself with section 2.6.
 
+9. Run `.venv\Scripts\python.exe examples\integrator_comparison.py`. Prediction: the "ratio" column
+   approaches 16 for RK4 and is 4.00 for Verlet.
+10. In that script set `ECCENTRICITY = 0.9`. Prediction: both errors grow a lot, because at periapsis
+    (r = 10) the particle moves fast and the force changes quickly, so a fixed step is too coarse there.
+    This is the motivation for adaptive step sizes in 1C-2.
+11. Set `SEMI_MAJOR_AXIS = 1000` with the same steps per orbit. Prediction: the end error grows exactly
+    tenfold, so the error relative to a stays the same. With GM = 1 the problem has no length scale of
+    its own: the same number of steps per orbit gives the same relative accuracy at every size.
+12. In a Python prompt, integrate the circular orbit with Euler's method yourself:
+
+    ```python
+    import numpy as np
+    from bhlab.physics.newtonian import acceleration, circular_orbit, specific_energy
+
+    y = circular_orbit(100.0)
+    h = 6.283
+    for _ in range(1000):
+        y = y + h * np.concatenate((y[2:], acceleration(y[:2])))
+    print(np.hypot(y[0], y[1]), specific_energy(y))
+    ```
+
+    Prediction: after one orbit the radius has grown to about 107.7 and the energy has risen from
+    −0.005 to −0.00466. Euler spirals outward. RK4 with the same step stays at 100 to within 10⁻⁷.
+
 ## 7. To study next
 
-Before Checkpoint 1C, the Newtonian engine:
+Before Checkpoint 1C-2 (SciPy, events, orbital elements):
 
-- Newton's law of gravitation as a differential equation: r̈ = −GM r / |r|³.
-- Writing a second-order equation as a first-order system, the form every solver expects.
-- The Kepler problem: ellipses, the period law T² ∝ a³, and energy and angular momentum as
-  constants of the motion.
-- Numerical integration: Euler's method and why it fails for orbits, the Runge–Kutta idea, step
-  size against error.
-- NumPy arrays: vectors of numbers, and arithmetic on whole arrays.
+- Adaptive step size: estimate the error of each step and choose h to keep it below a tolerance.
+- Embedded Runge–Kutta pairs (Dormand–Prince), the idea behind SciPy's `solve_ivp`.
+- Root finding in time: locating the moment the particle reaches periapsis or crosses a radius.
+- Orbital elements from a state vector: eccentricity vector, semi-major axis from E = −1/(2a).
 
 Further ahead, for Stage 2: the idea of a metric, proper time against coordinate time, and the
 effective potential of an orbit.
