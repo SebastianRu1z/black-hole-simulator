@@ -18,6 +18,16 @@ def test_light_year_follows_from_c_and_the_julian_year():
     assert constants.C * constants.JULIAN_YEAR == 9_460_730_472_580_800.0
 
 
+def test_light_year_constant_is_stored_exactly():
+    # 299 792 458 m/s × 31 557 600 s, worked out here with whole numbers. The result is larger
+    # than 2**53, beyond which a float cannot hold every whole number, but it is a multiple of
+    # 64 and is therefore stored without any rounding. That is why == is safe in this test.
+    exact = 299_792_458 * 31_557_600
+    assert exact == 9_460_730_472_580_800
+    assert exact > 2**53 and exact % 64 == 0
+    assert exact == constants.LIGHT_YEAR
+
+
 def test_solar_mass_in_kilograms():
     # Commonly quoted value: 1.9884e30 kg.
     assert pytest.approx(1.9884e30, rel=1e-4) == constants.M_SUN_KG
@@ -31,3 +41,4 @@ def test_values_agree_with_scipy_codata_table():
     assert scipy_constants.G == constants.G
     assert scipy_constants.au == constants.AU
     assert scipy_constants.Julian_year == constants.JULIAN_YEAR
+    assert scipy_constants.light_year == constants.LIGHT_YEAR

@@ -61,6 +61,17 @@ def turn_wheel(view, notches, pixel):
     QApplication.sendEvent(viewport, event)
 
 
+def map_area(view):
+    """Width and height of the map on screen, in pixels. The axes are not part of it."""
+    return view.view_box.width(), view.view_box.height()
+
+
+def let_the_layout_settle(qapp):
+    """Paint the view, then give the layout the further passes in which it reacts."""
+    for _ in range(5):
+        qapp.processEvents()
+
+
 # --- what is drawn ---------------------------------------------------------------------------
 
 
@@ -181,9 +192,55 @@ def test_dragging_with_the_left_button_pans_the_map(window, qapp):
     # Dragging the map 120 px right and 45 px up moves the view centre the opposite way.
     expected = (-shift.x() / pixels_per_unit, shift.y() / pixels_per_unit)
     assert centre(view) == pytest.approx(expected, abs=1.5 / pixels_per_unit)
-    # Panning changes the tick labels, which can resize the plot area by a few pixels, so the
-    # scale is only required to stay the same to within one per cent.
-    assert spans(view) == pytest.approx((width, height), rel=1e-2)
+    # Panning moves the map and does nothing else: the visible region keeps its size.
+    assert spans(view) == pytest.approx((width, height))
+    assert view.pixels_per_unit() == pytest.approx(pixels_per_unit)
+
+
+@pytest.mark.parametrize(
+    ("x", "y"),
+    [(-4.0, 1.5), (30.0, -200.0), (500.0, 5000.0), (-3.0e4, -8.0e4), (9.0e5, -9.0e5)],
+)
+def test_panning_changes_neither_the_scale_nor_the_size_of_the_map(window, qapp, x, y):
+    """Far from the centre the tick labels have more digits. The map must not give way to them."""
+    view = window.view
+    area, scale, visible = map_area(view), view.pixels_per_unit(), spans(view)
+
+    view.view_box.translateBy(x=x, y=y)
+    let_the_layout_settle(qapp)
+
+    assert centre(view) == pytest.approx((x, y))
+    assert map_area(view) == area
+    assert spans(view) == pytest.approx(visible, rel=1e-9)
+    # The scale is read back through the view transform, which loses digits far from the
+    # origin (two numbers near 10⁶ are subtracted), hence the looser tolerance.
+    assert view.pixels_per_unit() == pytest.approx(scale)
+
+
+def test_zooming_does_not_change_the_size_of_the_map(window, qapp):
+    view = window.view
+    area = map_area(view)
+    for factor in (900.0, 1.0 / 40.0, 1.0e-4):  # tick labels from 0.05 to 100000
+        view.reset_view()
+        view.zoom_by(factor)
+        let_the_layout_settle(qapp)
+        assert map_area(view) == area
+
+
+def test_the_longest_tick_labels_fit_in_the_space_reserved_for_them(window, qapp):
+    """The price of a fixed axis width: it has to be wide enough for the longest label."""
+    view = window.view
+    axis = view.plot_item.getAxis("left")
+    reserved = axis.style["tickTextWidth"]
+    # (y at the centre of the view, visible height): where the labels have the most characters.
+    places = ((0.0, 20.0), (-9999.9, 0.5), (-99999.9, 0.5), (-88888.0, 20.0), (-999990.0, 20.0))
+    for y, height in places:
+        view.view_box.setRange(
+            xRange=(-height / 2, height / 2), yRange=(y - height / 2, y + height / 2), padding=0.0
+        )
+        let_the_layout_settle(qapp)
+        view.plot.grab()  # paint now, so that pyqtgraph measures the labels it draws
+        assert axis.textWidth <= reserved, f"the labels near y = {y:g} need {axis.textWidth} px"
 
 
 # --- the scale bar and scale invariance ------------------------------------------------------

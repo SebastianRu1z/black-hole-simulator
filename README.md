@@ -4,11 +4,11 @@ An interactive numerical laboratory for black hole physics, built one validated 
 from Newtonian gravity, through Schwarzschild and Kerr spacetimes, to electrical-engineering
 laboratories on top of them (RF links, signal processing, radio interferometry).
 
-**Status: early development — Stage 1, Checkpoint 1A.**
+**Status: early development — Stage 1, Checkpoint 1B.**
 The roadmap, and the verification status of every physics model, are in
 [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md).
 
-![The application window at Checkpoint 1A](docs/images/checkpoint-1a.png)
+![The application window at Checkpoint 1B](docs/images/checkpoint-1b.png)
 
 ## What works today
 
@@ -17,8 +17,15 @@ The roadmap, and the verification status of every physics model, are in
   of a non-rotating black hole of any mass.
 - **Desktop window** (`python -m bhlab`): choose a mass by typing, by slider or by preset, and see
   every characteristic scale update live, each with its formula.
+- **Map of the black hole** (`bhlab.ui.viewport`): the orbital plane seen from above, drawn in units
+  of the gravitational radius GM/c², with the event horizon, the photon sphere and the innermost
+  stable circular orbit. Drag to pan and turn the mouse wheel to zoom. A scale bar gives the physical
+  size for the chosen mass, and the status bar reads out the cursor position in Cartesian and polar
+  form. The map looks the same for every mass, because every length of the problem is proportional
+  to the mass; only the scale bar changes. It is a map in Schwarzschild coordinates, not what a
+  camera would see: the bending of light belongs to a later stage.
 - **Automated tests** for the unit conversions, the number formatting, the separation between
-  physics and interface, and the window itself.
+  physics and interface, the window and the map.
 
 Not there yet: the simulation. There are no particles, no orbits and no relativity in the package so
 far. Those arrive in later checkpoints, each one tested before the next begins.

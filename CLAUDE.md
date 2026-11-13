@@ -102,6 +102,25 @@ validation always comes before cosmetic refactoring.
   does, check that it suits this Python project, name security concerns and unneeded
   dependencies, and ask for approval. `PROJECT_PROGRESS.md` records what is installed.
 
+## Model selection (set by Sebastian on 2026-11-12)
+
+Usage credits are limited, so the default is Opus at High effort. High covers routine Python
+development, UI and visualisation, ordinary debugging, tests, documentation, explanations, git
+and ordinary checkpoints. Do not suggest Opus Max for work High can do reliably.
+
+- Recommend Max only for a specific technical reason. Examples: deriving or implementing
+  Schwarzschild or Kerr geodesic equations; Hamiltonian formulations of relativistic motion; hard
+  numerical stability or convergence problems; relativistic ray tracing; Maxwell's equations in
+  curved spacetime; debugging mathematical inconsistencies; architecture decisions that shape the
+  whole physics engine; graduate-level numerical algorithms; repeated failures with High. A
+  feature that only sounds advanced is not a reason.
+- Before such a task, stop and write **MODEL UPGRADE RECOMMENDED** with five points: the current
+  task; why High may be insufficient; what extra reasoning Max adds; whether the switch is
+  necessary or optional; the credit cost. Then ask: "Would you like to switch to Opus Max for this
+  task, or continue with Opus High?" If the switch matters, do not start until Sebastian answers.
+- Once that task is completed, tested and documented, remind Sebastian to switch back to High.
+- All other rules in this file still apply.
+
 ## Commands (Windows)
 
 ```powershell

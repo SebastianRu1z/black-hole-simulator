@@ -1,0 +1,337 @@
+# Learning notes — Black Hole Physics Lab
+
+A growing technical reference for understanding this project: the physics, the mathematics, the
+Python and the engineering ideas behind the code. It is organised by topic, not by date. Each
+entry names the checkpoint that introduced it, and every new checkpoint adds to the sections below.
+
+Last updated: 2026-11-12, Checkpoint 1B. Covered so far: 1A (units, constants, the window) and 1B
+(the 2D map). Nothing moves in the program yet. Orbits arrive in Checkpoint 1C.
+
+File paths in this document are relative to `src/bhlab/` unless they start with `tests/`.
+
+## 1. Physics
+
+### 1.1 One length sets the size of a black hole (1A)
+
+A non-rotating black hole is described by a single number, its mass M. The mass only ever appears
+in the product GM, and from GM and the speed of light c there is exactly one way to build a length
+and one way to build a time:
+
+    r_g = GM / c²      the gravitational radius
+    t_g = GM / c³      the time light needs to travel r_g
+
+Check the units: GM is measured in m³/s². Dividing by c² (m²/s²) leaves metres. Dividing by c³
+(m³/s³) leaves seconds.
+
+Worked example, the Sun: GM☉ = 1.327 124 4 × 10²⁰ m³/s² and c² = 8.987 55 × 10¹⁶ m²/s², so
+r_g = 1476.6 m and t_g = r_g / c = 4.925 µs. Every other black hole follows by multiplying with its
+mass in solar masses:
+
+| Black hole | Mass | r_g | t_g |
+|---|---|---|---|
+| Stellar-mass | 10 M☉ | 14.77 km | 49.25 µs |
+| Sagittarius A* | 4.3 × 10⁶ M☉ | 6.349 × 10⁶ km = 0.04244 AU | 21.18 s |
+| M87* | 6.5 × 10⁹ M☉ | 64.16 AU | 8.893 h |
+
+In code: `BlackHole.length_unit` and `BlackHole.time_unit` in `units.py`.
+
+### 1.2 Geometrized units: G = c = 1 (1A)
+
+The program measures every length in units of r_g and every time in units of t_g. In these units
+G = c = 1 and the mass has disappeared from the equations. One calculation then describes a black
+hole of any mass, and SI values are obtained at the very end by multiplying with r_g or t_g
+(`BlackHole.length_to_si`, `BlackHole.time_to_si`).
+
+This is why the map in the window does not change when you change the mass. Only the scale bar
+changes, because it is the one place where r_g is turned back into kilometres.
+
+### 1.3 Three radii to know (1A, drawn in 1B)
+
+For a non-rotating (Schwarzschild) black hole, in units of r_g:
+
+| Radius | Value | Meaning |
+|---|---|---|
+| Event horizon, r_s | 2 | Nothing that crosses it can come back out, not even light |
+| Photon sphere, r_ph | 3 | Light can circle the black hole here, on an unstable orbit |
+| ISCO, r_ISCO | 6 | The innermost stable circular orbit for matter |
+
+Status: the program states these values; it does not derive them yet. Deriving them from the
+equations of motion is part of Stage 2. Newtonian gravity, which Stage 1 uses, has none of the
+three: in Newton's theory a circular orbit exists at every radius.
+
+### 1.4 Why the code stores GM and not M (1A)
+
+Tracking of planets and spacecraft measures the product GM of the Sun to better than one part in a
+billion. G on its own is known to about two parts in 100 000. Lengths and times need only GM, so
+the program converts solar masses with GM☉ and never touches G. G is used only to print a mass in
+kilograms. The lesson is general: carry the best-measured quantity through a calculation.
+
+### 1.5 What the map is, and what it is not (1B)
+
+The map shows the orbital plane from above in Schwarzschild coordinates, in which a circle of
+radius r has circumference 2πr. It is not a photograph. Light bends near a black hole, so a camera
+would see a dark shadow of radius 3√3 r_g ≈ 5.2 r_g, about 2.6 times the horizon. Images belong to
+Stage 6.
+
+## 2. Mathematics
+
+### 2.1 Significant figures and scientific notation (1A)
+
+`format_number` in `formatting.py` writes a number with four significant figures. It writes the
+number as m × 10ᵉ with 1 ≤ |m| < 10, then uses plain decimals when −2 ≤ e < 5 and the form
+`1.270 × 10⁷` otherwise. The order matters: it rounds first and chooses the notation afterwards, so
+99 999.6 becomes 1.000 × 10⁵ and not 10.000 × 10⁴.
+
+### 2.2 Logarithmic scales (1A)
+
+Black hole masses span eleven powers of ten, so the mass slider is logarithmic: slider position p
+stands for the mass M = 10^(p/100) solar masses. Equal steps of the slider multiply the mass by
+the same factor, 10^0.01 ≈ 1.023. A linear slider from 1 to 10¹¹ would put every stellar-mass black
+hole in its first pixel.
+
+### 2.3 Round numbers: the 1-2-5 rule (1B)
+
+A scale bar should have a round length. `nice_length(maximum)` in `ui/scale_bar.py` returns the
+largest number of the form 1, 2 or 5 × 10ⁿ that does not exceed `maximum`:
+
+    n = floor(log10(maximum))        the power of ten
+    f = maximum / 10ⁿ                a number from 1 to 10
+    step = 5 if f ≥ 5, 2 if f ≥ 2, otherwise 1
+    result = step × 10ⁿ
+
+Example: the view is 20.7 r_g wide and the bar may use a quarter of it, 5.19 r_g. Then n = 0,
+f = 5.19 and the bar is 5 r_g long. Oscilloscopes use the same 1-2-5 sequence for their
+volts-per-division settings.
+
+### 2.4 Cartesian and polar coordinates (1B)
+
+The cursor readout converts the map position (x, y) to a radius and an angle:
+
+    r = √(x² + y²)                   math.hypot(x, y)
+    φ = atan2(y, x), shown from 0° to 360°
+
+`atan2(y, x)` is used instead of `atan(y / x)` because it finds the quadrant from the two signs and
+does not divide by zero on the y axis. Example: (3, 4) gives r = 5 and φ = 53.1°. In code:
+`describe_cursor` in `ui/main_window.py`.
+
+### 2.5 From map coordinates to pixels (1B)
+
+The camera is a linear map between r_g and pixels. One scale s, in pixels per r_g, serves both
+directions, so circles stay circles (the aspect ratio is locked):
+
+    x_pixel = s · (x − x_left)            y_pixel = s · (y_top − y)
+
+- Panning changes x_left and y_top and leaves s alone.
+- Zooming by a factor k replaces s with k · s. Zooming about the cursor keeps the map point under
+  the cursor where it is, while everything else moves towards it or away from it.
+- With a map area of W by H pixels showing a region Δx by Δy, s = W / Δx = H / Δy. If W changes,
+  then Δx or s has to change with it. That was the defect fixed at the end of 1B: the plotting
+  library let the left axis grow with its tick labels, which made W smaller while you panned.
+
+### 2.6 Floating-point numbers (1A, 1B)
+
+Python's `float` is a 64-bit binary number with 53 bits of precision, about 16 decimal digits.
+
+- Every whole number up to 2⁵³ ≈ 9.007 × 10¹⁵ is stored exactly. Above that the stored values are
+  2 apart, then 4, and so on. The light-year, 9 460 730 472 580 800 m, is larger than 2⁵³ but is a
+  multiple of 64, so it is still exact (`tests/test_constants.py` checks this).
+- Most decimal fractions are not exact: `0.1 + 0.2 == 0.3` is `False`. Tests therefore compare with
+  a tolerance, `pytest.approx`, and use `==` only where exactness can be argued.
+- Subtracting two nearly equal numbers loses digits. Near x = 10⁶ neighbouring floats are
+  1.2 × 10⁻¹⁰ apart, so a difference of 0.03 between two such numbers is good to only 4 parts in
+  10⁹. One of the map tests reads the scale in this way and allows for it. That is a numerical
+  error: the scale itself had not changed.
+
+## 3. Python
+
+### 3.1 How the project is laid out (1A)
+
+| Path | Role |
+|---|---|
+| `constants.py`, `units.py`, `formatting.py` | The physics side: numbers and text, no graphics |
+| `ui/` | The window: one module per panel or widget |
+| `__main__.py` | Lets `python -m bhlab` start the application |
+| `tests/` | One test file per subject, run with pytest |
+| `pyproject.toml` (project root) | Name, dependencies and tool settings of the package |
+
+The rule that shapes everything: the interface may import the physics, never the reverse. The
+physics can then be tested and reused without a window. `tests/test_architecture.py` enforces it
+by importing the physics modules in a fresh Python process and checking that Qt was not loaded.
+
+### 3.2 A class that is a value: the frozen dataclass (1A)
+
+Abridged from `units.py`:
+
+```python
+@dataclass(frozen=True, slots=True)
+class BlackHole:
+    gm: float
+
+    def __post_init__(self) -> None:
+        _require_positive_finite(self.gm, "The gravitational parameter GM")
+
+    @classmethod
+    def from_solar_masses(cls, solar_masses: float) -> Self:
+        return cls(gm=solar_masses * GM_SUN)
+
+    @property
+    def length_unit(self) -> float:
+        return self.gm / C**2
+```
+
+- `@dataclass` writes the constructor from the list of fields.
+- `frozen=True` makes the object immutable. A black hole of 10 M☉ can never quietly become one of
+  11 M☉; a new mass means a new object. Bugs caused by shared, changing state cannot happen.
+- `__post_init__` runs after construction and rejects invalid values with a clear message.
+- `@classmethod` gives a second way to build the object, named after what you have in hand.
+- `@property` makes a computed value read like a stored one: `bh.length_unit`, without brackets.
+
+### 3.3 Reject bad input, never repair it (1A)
+
+`parse_mass_text` in `ui/mass_controls.py` turns typed text into a mass or raises `ValueError` with
+a sentence written for the user. It refuses "4,3" instead of guessing what the comma means. A
+scientific program that quietly "corrects" its input produces results nobody asked for.
+
+### 3.4 Event-driven programs: signals and slots (1A, 1B)
+
+A graphical program does not run from top to bottom. After `app.exec()` it waits in the event loop
+and reacts to events: a key press, a mouse move, a timer. Qt connects the parts with signals and
+slots:
+
+```python
+class MassControls(QWidget):
+    mass_changed = Signal(float)              # announces: "there is a new mass"
+    ...
+        self.mass_changed.emit(mass)          # sent when a valid mass is applied
+
+# in MainWindow.__init__: who reacts
+self.controls.mass_changed.connect(self._on_mass_changed)
+```
+
+The sender does not know who is listening. That keeps the mass panel, the scales table and the map
+independent of each other. Follow one chain to see it work: typing a mass and pressing Enter runs
+`_on_editing_finished`, which calls `parse_mass_text` and then `_apply`, which emits
+`mass_changed`. `MainWindow._on_mass_changed` builds a new `BlackHole` and hands it to the table and
+to the map.
+
+A trap worth remembering, from the preset buttons:
+
+```python
+button.clicked.connect(lambda _checked=False, m=preset.solar_masses: self.set_mass(m))
+```
+
+The default `m=preset.solar_masses` captures the value when the lambda is created. Written as
+`lambda: self.set_mass(preset.solar_masses)` inside the loop, all three buttons would use the last
+preset, because the name `preset` is only looked up when a button is clicked.
+
+### 3.5 Building on a library (1B)
+
+The map is a `pyqtgraph.PlotWidget`. The project configures it instead of drawing axes by hand:
+`setAspectLocked` for equal scales, `setLimits` for the zoom and pan limits, `setStyle` for the
+axes. The price of a library is its defaults. pyqtgraph sized the left axis to its labels, which is
+wrong for a map, and the cure was two settings (`autoExpandTextSpace=False` and a fixed
+`tickTextWidth`), found by reading the library's source code.
+
+### 3.6 Testing with pytest (1A, 1B)
+
+- A test is a function whose name starts with `test_` and that uses `assert`.
+- `@pytest.mark.parametrize` runs one test over a table of inputs and expected outputs.
+- `pytest.approx(value, rel=...)` compares floats with a tolerance.
+- `pytest.raises(ValueError)` checks that bad input is refused.
+- A fixture (`qapp` and `window` in `tests/conftest.py`) prepares something several tests need.
+- Interface tests run on Qt's "offscreen" platform, so no window appears.
+- Test at the boundaries: `format_length_auto` is tested exactly at 0.01 AU and just below it.
+- Write the test first when fixing a defect. The pan tests were written before the fix, failed
+  (eight of them), and passed after it. A test that has never failed has not shown that it can.
+- Read what a passing test asserts. The earlier drag test passed only because its tolerance had
+  been widened to 1 %.
+
+## 4. Key functions
+
+| Function | File | Takes | Gives |
+|---|---|---|---|
+| `BlackHole.from_solar_masses` | `units.py` | mass in M☉ | a `BlackHole` |
+| `BlackHole.length_to_si` | `units.py` | length in r_g | metres |
+| `format_number` | `formatting.py` | a number, significant figures | text such as `1.270 × 10⁷` |
+| `format_length_auto` | `formatting.py` | metres | text in mm, m, km, AU or ly |
+| `parse_mass_text` | `ui/mass_controls.py` | typed text | mass in M☉, or a `ValueError` |
+| `nice_length` | `ui/scale_bar.py` | a maximum length | the largest 1-2-5 number not above it |
+| `ScaleBar.update_scale` | `ui/scale_bar.py` | pixels per r_g, view width, black hole | sets the bar and its label |
+| `describe_cursor` | `ui/main_window.py` | x and y in r_g, black hole | the readout text |
+| `BlackHoleView.zoom_by` | `ui/viewport.py` | zoom factor | moves the camera |
+| `BlackHoleView.pixels_per_unit` | `ui/viewport.py` | nothing | the scale s, in pixels per r_g |
+
+`format_length_auto` without its docstring, as an example of a rule written as code:
+
+```python
+def format_length_auto(metres: float, sig: int = 4) -> str:
+    size = abs(metres)
+    if size >= 0.1 * LIGHT_YEAR:
+        return f"{format_number(metres / LIGHT_YEAR, sig)} ly"
+    if size >= 0.01 * AU:
+        return f"{format_number(metres / AU, sig)} AU"
+    return format_length_si(metres, sig)
+```
+
+The largest unit is tried first. `abs` is used for the decision and the signed value for the text,
+so a coordinate of −1 AU prints as "-1.000 AU".
+
+## 5. Electrical-engineering connections
+
+Only connections that are real are listed here.
+
+- **Normalisation.** Geometrized units do for black holes what a normalised prototype does for
+  filters: design once for 1 Ω and 1 rad/s, then scale to the impedance and frequency you need.
+  Here the calculation is done once for r_g = 1 and then scaled to the mass. Normalised frequency in
+  DSP and the per-unit system in power engineering are the same idea.
+- **Logarithmic scales.** The mass slider covers eleven decades the way a Bode plot covers
+  frequency, and for the same reason: equal ratios deserve equal space.
+- **Event-driven design.** Signals and slots resemble interrupt-driven firmware: a source raises an
+  event and handlers respond, with no polling loop and no knowledge of each other.
+- **Instrument calibration.** A scale bar is a graticule. Its calibration must not depend on where
+  you look, which is why the map area was given a fixed size.
+- **Finite word length.** A 64-bit float has a 53-bit mantissa, as a converter has a fixed number of
+  bits. Round-off and the loss of digits in subtraction are the effects that also limit fixed-point
+  filters.
+- **Not built yet.** Time dilation as a frequency shift, signal paths along light rays, spectra and
+  link budgets come in Stages 3 and 5.
+
+## 6. Experiments
+
+Predict first, then start the program with `.venv\Scripts\python.exe -m bhlab` and check.
+
+1. Press "Reset view", then click the three presets in turn. Prediction: the circles do not move at
+   all, and the scale bar reads 5 r_g = 73.83 km, then 0.2122 AU, then 320.8 AU.
+2. Which mass has a gravitational radius of exactly 1 AU? M = 1 AU / 1476.625 m ≈ 1.0131 × 10⁸ M☉.
+   Type `1.0131e8` and read the "Gravitational radius" row.
+3. Move the cursor along the ISCO circle. Prediction: r stays close to 6 r_g while φ runs from 0° to
+   360°. At the point (3, 4) the readout says r = 5.000 r_g and φ = 53.1°.
+4. Click the handle of the mass slider, then press the right-arrow key once. Prediction: the mass
+   goes from 10 to 10.2 M☉, the factor 10^0.01 ≈ 1.023 rounded to three figures.
+5. Choose M87* and zoom out until the scale bar reads 1000 r_g. Prediction: it says 1.015 ly. The
+   unit has changed from AU to light-years on its own.
+6. In a Python prompt (`.venv\Scripts\python.exe`), run
+   `from bhlab.units import BlackHole` and then `BlackHole.from_solar_masses(1).length_unit`.
+   Prediction: 1476.625… metres. Then try a mass of `-1` and read the error message.
+7. Break something on purpose. In `ui/viewport.py` change `_WIDEST_TICK_LABEL` to `"-8"` and run the
+   tests. Prediction: exactly one test fails, the one that checks the labels fit, while the tests
+   for a constant map size still pass. Then change it back.
+8. Floating point, in a Python prompt: `0.1 + 0.2 == 0.3`, then `float(2**53 + 1) == 2**53 + 1`.
+   Both are `False`. Explain each to yourself with section 2.6.
+
+## 7. To study next
+
+Before Checkpoint 1C, the Newtonian engine:
+
+- Newton's law of gravitation as a differential equation: r̈ = −GM r / |r|³.
+- Writing a second-order equation as a first-order system, the form every solver expects.
+- The Kepler problem: ellipses, the period law T² ∝ a³, and energy and angular momentum as
+  constants of the motion.
+- Numerical integration: Euler's method and why it fails for orbits, the Runge–Kutta idea, step
+  size against error.
+- NumPy arrays: vectors of numbers, and arithmetic on whole arrays.
+
+Further ahead, for Stage 2: the idea of a metric, proper time against coordinate time, and the
+effective potential of an orbit.
+
+Textbook references will be added here once they have been checked.

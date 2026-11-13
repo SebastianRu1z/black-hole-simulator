@@ -4,8 +4,10 @@ import math
 
 import pytest
 
+from bhlab.constants import AU, LIGHT_YEAR
 from bhlab.formatting import (
     format_length_au,
+    format_length_auto,
     format_length_si,
     format_mass_si,
     format_mass_solar,
@@ -75,6 +77,37 @@ def test_lengths_pick_a_readable_si_unit(metres, expected):
 def test_lengths_in_astronomical_units():
     assert format_length_au(1.26989753e10) == "0.08489 AU"
     assert format_length_au(29532.5) == "1.974 × 10⁻⁷ AU"
+
+
+@pytest.mark.parametrize(
+    ("metres", "expected"),
+    [
+        (8.87e-3, "8.870 mm"),  # small lengths keep their SI unit
+        (73_831.25, "73.83 km"),  # 5 r_g of a 10 M☉ black hole
+        (0.0099 * AU, "1.481 × 10⁶ km"),  # just below 0.01 AU
+        (0.01 * AU, "0.01000 AU"),  # astronomical units start at 0.01 AU
+        (1.26989753e10, "0.08489 AU"),  # event horizon of Sagittarius A*
+        (AU, "1.000 AU"),
+        (0.0999 * LIGHT_YEAR, "6318 AU"),  # just below 0.1 ly
+        (0.1 * LIGHT_YEAR, "0.1000 ly"),  # light-years start at 0.1 ly
+        (LIGHT_YEAR, "1.000 ly"),
+        (4.0e16, "4.228 ly"),
+    ],
+)
+def test_lengths_pick_the_unit_that_suits_their_size(metres, expected):
+    assert format_length_auto(metres) == expected
+
+
+def test_automatic_unit_keeps_the_sign_of_a_coordinate():
+    assert format_length_auto(-500.0) == "-500.0 m"
+    assert format_length_auto(-AU) == "-1.000 AU"
+    assert format_length_auto(-2.0 * LIGHT_YEAR) == "-2.000 ly"
+
+
+def test_automatic_unit_agrees_with_the_single_unit_formatters():
+    assert format_length_auto(29532.5) == format_length_si(29532.5)
+    assert format_length_auto(1.26989753e10) == format_length_au(1.26989753e10)
+    assert format_length_auto(AU, sig=2) == "1.0 AU"
 
 
 @pytest.mark.parametrize(

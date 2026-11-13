@@ -9,11 +9,12 @@ coordinates, in which a circle of radius r has circumference 2πr. Light bending
 the black hole's shadow look about 2.6 times larger than its horizon, belongs to a later stage.
 """
 
+import math
 from dataclasses import dataclass
 
 import pyqtgraph as pg
 from PySide6.QtCore import QEvent, QPointF, Qt, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QFontMetricsF
 from PySide6.QtWidgets import (
     QGraphicsEllipseItem,
     QHBoxLayout,
@@ -28,6 +29,10 @@ from bhlab.ui.theme import BACKGROUND, BLUE, BORDER, MUTED, ORANGE, PURPLE
 from bhlab.units import HORIZON_RADIUS_RG, ISCO_RADIUS_RG, PHOTON_SPHERE_RADIUS_RG, BlackHole
 
 _HORIZON_LABEL_WIDTH = 88.0  # pixels; the label is centred inside the disc
+
+# The longest label the y axis can show. Within the zoom and pan limits of this view, pyqtgraph
+# never prints more than a sign, six digits and a decimal point (tests/test_viewport.py checks).
+_WIDEST_TICK_LABEL = "-88888.8"
 
 
 @dataclass(frozen=True)
@@ -175,6 +180,13 @@ class BlackHoleView(QWidget):
             self.plot_item.setLabel(
                 side, f"{text} &nbsp;(r<sub>g</sub>)", **{"color": MUTED, "font-size": "9pt"}
             )
+        # pyqtgraph makes the left axis as wide as its longest tick label. The map would then
+        # change size, and with it the scale, whenever panning or zooming changes the number
+        # of digits. Reserve the width of the longest possible label instead, and keep it.
+        label_width = QFontMetricsF(tick_font).horizontalAdvance(_WIDEST_TICK_LABEL)
+        self.plot_item.getAxis("left").setStyle(
+            autoExpandTextSpace=False, tickTextWidth=math.ceil(label_width)
+        )
 
         self._circles: dict[str, QGraphicsEllipseItem] = {}
         self._labels: dict[str, pg.TextItem] = {}

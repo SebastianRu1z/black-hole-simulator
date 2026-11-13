@@ -1,7 +1,7 @@
 # Black Hole Physics Lab — Project Progress
 
-Last updated: 2026-11-12, by a later session that inspected the project and updated the documents only.
-Checkpoint 1A is approved, merged and pushed; 1B is built on the local branch `checkpoint-1b`, not yet approved.
+Last updated: 2026-11-12. Checkpoints 1A and 1B are approved and merged into `main`. 1A is pushed; the 1B
+merge is local only. Checkpoint 1C has been proposed and is not approved.
 
 This file is the single source of truth for where the project stands.
 **Read it first in every new session, then inspect the code. Do not rebuild or overwrite existing work.**
@@ -32,59 +32,28 @@ This file is the single source of truth for where the project stands.
 | Item | State |
 |---|---|
 | Current stage | Stage 1 — working interactive simulation foundation (Newtonian) |
-| Last completed checkpoint | **1A — project skeleton, units module, application window** (built 2026-11-12) |
-| Last approved checkpoint | **1A** (approved by Sebastian on 2026-11-12) |
-| Checkpoint in progress | **1B — 2D black hole view and camera.** Code and tests are written and committed on the local branch `checkpoint-1b` (not pushed, not reported, not approved). Built: pyqtgraph map in r_g units with horizon disc, photon-sphere and ISCO circles, labels that hide when zoomed out, grid, pan/zoom/reset, zoom limits, scale bar in r_g and physical units, cursor readout in the status bar, view toggles, scales table moved to a right-hand panel. The verified state and the remaining work are listed under "Checkpoint 1B: state and remaining work" below. |
-| Automated tests | 161 passed, 0 failed on branch `checkpoint-1b` (pytest 9.2.0, Python 3.14.7, 2026-11-12); 113 on `main`. `ruff check` clean. |
-| Git | 1A (commit `ccea74b`) is merged into `main`. Each later checkpoint is built on its own branch and merged after approval. |
-| GitHub | Remote `origin` is `SebastianRu1z/black-hole-simulator`, created by Sebastian. On 2026-11-12 Sebastian asked for the approved 1A work to be pushed to it; `main` was pushed at commit `d903597`. Push `main` only when Sebastian asks; never push an unapproved checkpoint. Visibility not checked. |
-
-### Checkpoint 1B: state and remaining work (inspected 2026-11-12, no code changed)
-
-Verified in a fresh session: working tree clean, no stashes, one unpushed commit (`7e9526b`) on
-`checkpoint-1b`. 161 tests pass (architecture 1, constants 5, formatting 29, interface 38, units 40,
-viewport 48) and are stable over repeated runs; `ruff check` and `ruff format --check` are clean. An
-offscreen render shows every 1B feature working, and the lengths it displays agree with hand calculations.
-Moving the shared test fixture and helper out of `tests/test_ui.py` weakened no assertion.
-
-Remaining before the 1B report:
-
-1. Tests for `format_length_auto` and `LIGHT_YEAR`, which are only exercised indirectly today.
-2. The plot area changes size while panning (measurements below): fix it or accept it. Sebastian decides.
-3. Sebastian looks at the real window (`python -m bhlab`). In the offscreen render the grid is very faint
-   and the y axis does not label ±10; the grid-opacity and margin tweak has still not been judged by eye.
-4. Save `docs/images/checkpoint-1b.png` and update the README, which still describes 1A only.
-5. Update the architecture, verification-matrix and known-issues sections of this file.
-6. Create `LEARNING_NOTES.md`, covering 1A and 1B.
-7. Write the checkpoint report in the new format and ask for approval.
-
-Plot area and panning (measured 2026-11-12). The width of pyqtgraph's left axis follows its widest tick
-label, so it changes as the map is panned: 40 px near the origin, 58 px at y ≈ −80 000 r_g. The map area
-changes width by the same amount. In the default 1440 × 800 window the map is limited by its height, so
-the scale stays exactly the same and only the visible width changes, by up to 2.6 %. Where the map is
-limited by its width the scale itself changes: by up to 4.5 % in the test environment (no fonts there, so
-the map area is almost square). The earlier note in this file said "under 1 %"; the measured changes are
-larger. The scale bar and the cursor readout stay correct throughout, because both are recomputed from the
-live transform. Giving the left axis a fixed width (tried at run time with 64 px, not committed) removes
-the effect completely. `test_dragging_with_the_left_button_pans_the_map` accepts a 1 % change of the
-visible spans for this reason; tighten it once the axis width is fixed.
-
-Screenshots: Qt's offscreen platform finds no fonts on this machine and draws every character as a box.
-Setting `QT_QPA_FONTDIR=C:\Windows\Fonts` before starting Python gives readable text.
+| Last completed checkpoint | **1B — 2D black hole view and camera** (completed 2026-11-12) |
+| Last approved checkpoint | **1B** (approved by Sebastian on 2026-11-12, after running the program); 1A approved earlier the same day |
+| Checkpoint in progress | None. 1C (the Newtonian engine) has not been started and needs an explicit yes. |
+| Next step | Sebastian decides on the plan for 1C, proposed on 2026-11-12 as two smaller checkpoints: 1C-1 (equations of motion, RK4 and velocity Verlet, tests against Kepler) and 1C-2 (SciPy DOP853 with events, orbital elements, command-line run). No 1C code before an explicit yes. Then branch `checkpoint-1c` from `main`. |
+| Automated tests | 181 passed, 0 failed on branch `checkpoint-1b` (pytest 9.2.0, Python 3.14.7, 2026-11-12), with and without fonts available to Qt; the same on `main` after the merge. `ruff check` and `ruff format --check` clean. |
+| Git | 1A (commit `ccea74b`) is merged into `main`. Each later checkpoint is built on its own branch and merged after approval. 1B (`7e9526b`, `e51d367` by Sebastian, and the completing commit) was merged into `main` locally on 2026-11-12 after Sebastian's approval. |
+| GitHub | Remote `origin` is `SebastianRu1z/black-hole-simulator`, created by Sebastian. On 2026-11-12 Sebastian asked for the approved 1A work to be pushed to it; `main` was pushed at commit `d903597`. Push `main` only when Sebastian asks; never push an unapproved checkpoint. Visibility not checked. On 2026-11-12 Sebastian also published `checkpoint-1b` himself, at `e51d367`. The approved 1B work on `main` and the completing commit on `checkpoint-1b` are not pushed: push only when Sebastian asks. |
 
 ## What exists today
 
-### The package (Checkpoint 1A)
+### The package (Checkpoints 1A and 1B)
 
 | Module | What it does |
 |---|---|
-| `bhlab.constants` | c, G, GM☉, AU, solar mass in kg, day, Julian year, each with its source |
+| `bhlab.constants` | c, G, GM☉, AU, solar mass in kg, day, Julian year, light-year, each with its source |
 | `bhlab.units` | `BlackHole` (stores GM): geometrized ↔ SI conversion, r_g, t_g, and the Schwarzschild reference radii r_s, r_ph, r_ISCO |
-| `bhlab.formatting` | numbers to 4 significant figures (`1.270 × 10⁷`), lengths in mm/m/km or AU, times from µs to years, masses in kg or M☉ |
+| `bhlab.formatting` | numbers to 4 significant figures (`1.270 × 10⁷`), lengths in mm/m/km or AU, or in whichever unit from mm to light-years suits the size (`format_length_auto`), times from µs to years, masses in kg or M☉ |
 | `bhlab.ui` | PySide6 window: mass by text field (applied with Enter), logarithmic slider (1 to 10¹¹ M☉) or preset; live table of six characteristic scales with formulas and tooltips; invalid input is reported and never applied |
+| `bhlab.ui.viewport`, `bhlab.ui.scale_bar`, `bhlab.ui.view_options` (1B) | pyqtgraph map of the orbital plane in units of r_g: horizon disc, photon-sphere and ISCO circles with labels that hide when zoomed out, grid, drag to pan, wheel zoom about the cursor, zoom buttons, reset, zoom and pan limits, scale bar in r_g and in km, AU or light-years, cursor readout (x, y, r, φ) in the status bar, check boxes for the circles and the grid. The scales table sits in a right-hand panel |
 | `python -m bhlab` | opens the window |
 
-There is no simulation yet: no particles, no dynamics, no viewport.
+There is no simulation yet: no particles and no dynamics. The map shows the reference radii and nothing else.
 
 ### Prototypes (`prototypes/`, unchanged since 2026-11-11, not part of the tested package)
 
@@ -110,13 +79,16 @@ into the package, with proper tests, when those stages are reached.
 - GitHub CLI (`gh`) is installed (seen on 2026-11-12 in `C:\Program Files\GitHub CLI`; not used, and its
   login state was not checked). Node.js is not installed.
 - pyqtgraph 0.14.0 is installed and has been a declared dependency since 1B.
+- Screenshots: `QWidget.grab()` on a window shown with `WA_DontShowOnScreen` renders the real window (real
+  fonts, 125 % scaling, hence 1800 × 1000 px) without putting it on screen. On Qt's offscreen platform,
+  which the tests use, every character is a box unless `QT_QPA_FONTDIR=C:\Windows\Fonts` is set.
 
 ## Architecture
 
-As built (1A):
+As built (1A and 1B):
 
 ```
-pyproject.toml   README.md   PROJECT_PROGRESS.md   CLAUDE.md   .gitignore
+pyproject.toml   README.md   PROJECT_PROGRESS.md   LEARNING_NOTES.md   CLAUDE.md   .gitignore
 src/bhlab/
     __init__.py        version
     __main__.py        python -m bhlab
@@ -126,11 +98,14 @@ src/bhlab/
     ui/
         app.py             QApplication set-up, run()
         theme.py           colours and style sheet
-        main_window.py     window: mass controls (left dock) + scales (centre)
+        main_window.py     window: controls (left dock), map (centre), scales (right dock), cursor readout
         mass_controls.py   text field, slider, presets, input validation
+        view_options.py    check boxes for the reference circles and the grid
+        viewport.py        the 2D map: reference circles, camera, overlays
+        scale_bar.py       scale bar and its 1-2-5 rounding
         scales_panel.py    table of characteristic scales
-tests/                 113 tests: constants, units, formatting, architecture, interface
-docs/images/           screenshot used by the README
+tests/                 181 tests: constants, units, formatting, architecture, interface, map
+docs/images/           screenshots of each checkpoint; the README shows the latest
 prototypes/            the original scripts, unchanged
 ```
 
@@ -142,8 +117,8 @@ Rules: `ui/` imports the physics, never the reverse (`tests/test_architecture.py
 runs headless; internal units are geometrized (G = c = 1, lengths in GM/c², times in GM/c³) with conversion
 at the edges.
 
-Stack: Python ≥ 3.12, PySide6 (Essentials wheel), pytest, ruff, hatchling. Still to come: NumPy and SciPy
-(`solve_ivp`, DOP853) in 1C, pyqtgraph for real-time 2D views in 1B, Matplotlib for export-quality figures
+Stack: Python ≥ 3.12, PySide6 (Essentials wheel), pyqtgraph, pytest, ruff, hatchling. Still to come: NumPy and SciPy
+(`solve_ivp`, DOP853) in 1C, Matplotlib for export-quality figures
 in 1F, ModernGL or VisPy for 3D in Stage 6.
 
 ## Roadmap
@@ -152,7 +127,7 @@ Spec sections are numbered as in Sebastian's specification (§1–§51).
 
 | Stage | Scope | Spec | Experiments | Status |
 |---|---|---|---|---|
-| 1 | Interactive foundation: Newtonian engine, 2D view, particle placement, measurements, tests | §2A, §5, §6, §7, §11–§13 (Newtonian parts) | 1; Newtonian parts of 8, 9 | in progress (1A approved; 1B built, not yet approved) |
+| 1 | Interactive foundation: Newtonian engine, 2D view, particle placement, measurements, tests | §2A, §5, §6, §7, §11–§13 (Newtonian parts) | 1; Newtonian parts of 8, 9 | in progress (1A and 1B approved) |
 | 2 | Schwarzschild relativity: timelike and null geodesics, ISCO, photon sphere, time dilation, radial infall, Newton vs GR, validation | §2B, §8, §9, §13 | 2–7, 10 | not started (prototypes exist) |
 | 3 | RF communication physics: emitters/receivers, null-geodesic signal paths, gravitational and Doppler shift via g = (k·u)_obs/(k·u)_em, Shapiro delay, received-signal analysis | §43, §26 | EE 1, EE 2 | not started |
 | 4 | Kerr black holes: geodesics with E, L_z, Carter constant; horizons, ergosphere, frame dragging, prograde/retrograde ISCO, orbital frequencies; Penrose process as analytic demonstration | §23, §24, §31, §36 | 11, 12, 20 | not started |
@@ -171,7 +146,7 @@ the verification matrix below (§36), and references that are checked before the
 | # | Checkpoint | Delivers | Status |
 |---|---|---|---|
 | 1A | Project skeleton, units module, application window | package `bhlab`, tested constants/units/formatting modules, PySide6 window showing live characteristic scales for a chosen mass, pytest and ruff wired up | **approved 2026-11-12** |
-| 1B | 2D black hole view and camera | pyqtgraph viewport: horizon disc, photon-sphere and ISCO circles (labelled as GR reference radii the Newtonian engine does not use), scale bar, pan/zoom/reset, cursor readout; the scales table moves to a side panel | built on `checkpoint-1b`; not yet reported or approved |
+| 1B | 2D black hole view and camera | pyqtgraph viewport: horizon disc, photon-sphere and ISCO circles (labelled as GR reference radii the Newtonian engine does not use), scale bar, pan/zoom/reset, cursor readout; the scales table moves to a side panel | **approved 2026-11-12** |
 | 1C | Newtonian physics engine (headless) | test-particle equations of motion about a point mass; velocity Verlet, RK4, SciPy DOP853 with event detection; orbital elements; pytest checks against Kepler; command-line run | not started |
 | 1D | Particle placement and run controls | click-and-drag placement with a velocity vector, exact numeric inputs, rejection of invalid initial conditions, multiple particles, play/pause/reset/single-step/speed with physics decoupled from frame rate | not started |
 | 1E | Trails and live measurements | orbital trails, predicted path, selected-object panel (r, v, E, L, e, a, T, periapsis, apoapsis, status), unit switching, warning where the Newtonian model stops being trustworthy | not started |
@@ -195,12 +170,36 @@ Differences from the proposal:
 - `beta1.py` (Sebastian's byte-identical copy of `black_hole_orbits.py`) was moved into `prototypes/`
   with the others, because it imports `bh_physics.py` and must sit next to it.
 
+### Checkpoint 1B: what was built, and how it differs from the plan
+
+Built as planned in the table above: the pyqtgraph map in units of r_g with the horizon disc and the
+photon-sphere and ISCO circles, the scale bar, pan, zoom and reset, the cursor readout, and the scales
+table in a side panel.
+
+Added because the map needed them:
+- Labels on the circles that hide when the view is zoomed out too far to hold them, and check boxes that
+  switch the two reference circles and the grid on and off and double as the colour legend.
+- Limits on the camera: the view cannot show less than 0.5 r_g across or leave |x|, |y| ≤ 10⁶ r_g.
+- `LIGHT_YEAR` and `format_length_auto`, so that the scale bar and the readout use km, AU or light-years
+  as the mass requires.
+- A larger window (1440 × 800, minimum 1200 × 640) to hold three columns.
+
+Finished in a second session on 2026-11-12, after the first stopped at the usage limit:
+- Direct tests for `format_length_auto` and `LIGHT_YEAR`.
+- A fixed width for the left axis. pyqtgraph sized that axis to its longest tick label, so the map area
+  changed width while panning or zooming (by 18 px between the centre and y ≈ −80 000 r_g). Where the map
+  was limited by its width the scale changed with it, by up to 4.5 % in the test environment. The axis now
+  reserves the width of the longest label the view can show. Eight tests were written first and failed on
+  the old code. The drag test, which had been loosened to 1 %, is back at the default tolerance of 10⁻⁶.
+- README, screenshot and `LEARNING_NOTES.md`.
+
 ## Verification matrix
 
 | Physics model | Where | Equations implemented | Automated tests | Analytic benchmarks | Convergence evidence | Limitations documented |
 |---|---|---|---|---|---|---|
-| Constants, geometrized units, unit conversion | `bhlab.constants`, `bhlab.units` (1A) | yes (r_g = GM/c², t_g = GM/c³) | 45 pytest tests | GM☉/c² = 1.476625 km and GM☉/c³ = 4.925490947 µs (the pulsar-timing constant) reproduced to 1e-6 and 1e-9; c, G, AU, Julian year equal SciPy's CODATA table; exact light-year; linear mass scaling and round trips to 1e-14 | not applicable (closed-form arithmetic) | yes (module docstrings, this file) |
+| Constants, geometrized units, unit conversion | `bhlab.constants`, `bhlab.units` (1A) | yes (r_g = GM/c², t_g = GM/c³) | 46 pytest tests | GM☉/c² = 1.476625 km and GM☉/c³ = 4.925490947 µs (the pulsar-timing constant) reproduced to 1e-6 and 1e-9; c, G, AU, Julian year and light-year equal SciPy's CODATA table; the light-year constant is exact (checked with whole-number arithmetic); linear mass scaling and round trips to 1e-14 | not applicable (closed-form arithmetic) | yes (module docstrings, this file) |
 | Schwarzschild reference radii r_s, r_ph, r_ISCO | `bhlab.units` (1A) | stated as 2, 3, 6 × GM/c² | ratios tested | **none yet**: the values are entered as known results, not derived from the geodesic equations. Derivation is a Stage 2 task | — | yes |
+| 2D map (display geometry, not a physics model): map ↔ pixel coordinates, scale bar, cursor readout, choice of length unit | `bhlab.ui.viewport`, `bhlab.ui.scale_bar`, `bhlab.ui.main_window`, `bhlab.formatting` (1B) | r = √(x² + y²), φ = atan2(y, x); 1-2-5 rounding of the scale bar; physical length = length in r_g × GM/c² | 55 map tests, 12 for `format_length_auto` | circles drawn at 2, 3 and 6 r_g; the point (3, 4) reads r = 5 and φ = 53.1°, and 5 r_g = 73.83 km for 10 M☉; bar length in pixels equals its length × the scale; the map point under the cursor stays put during wheel zoom (1e-6 r_g); panning and zooming leave the size of the map area unchanged, panning also the scale | not applicable | yes (module docstrings, known issues below) |
 | Newtonian point-mass dynamics | planned, 1C | — | — | — | — | — |
 | Schwarzschild timelike geodesics | prototype script | yes | script self-test, 6 checks (not pytest) | circular-orbit period (0.01 %), weak-field precession (within 2 %), capture inside ISCO | none | partly, in docstring |
 | Schwarzschild null geodesics and thin-disc image | prototype script | yes | none | none (visual check only) | none | partly, in docstring |
@@ -208,7 +207,8 @@ Differences from the proposal:
 
 No model in this project may be described as validated or research-grade until its row is filled in.
 
-Test suite breakdown (2026-11-12): constants 5, units 40, formatting 29, architecture 1, interface 38.
+Test suite breakdown (2026-11-12): constants 6, units 40, formatting 41, architecture 1, interface 38, map 55.
+Total 181.
 
 ## Known issues and limitations
 
@@ -218,6 +218,23 @@ Checkpoint 1A:
 - The slider covers 1 to 10¹¹ M☉ and snaps to three significant figures; other masses must be typed.
 - The interface tests drive the widgets on Qt's offscreen platform. A real launch of `python -m bhlab` was
   checked once by hand (the process stayed up, no error output), not by an automated test.
+
+Checkpoint 1B:
+- The map was looked at in one window size (1440 × 800) at one display scaling (125 %), in a rendering of
+  the real window made off screen. Sebastian has not yet judged it on his own screen; the grid is subtle.
+- After "Reset view" the outermost tick labels, −10 and 10, are not printed. They sit exactly on the edge
+  of the map, and pyqtgraph drops a label that would stick out while the grid is on. Before the left axis
+  got its fixed width the x axis happened to show them, because the map was then a little wider than tall.
+  Showing slightly more than ±10 r_g after a reset would bring them back on both axes.
+- The left axis reserves room for eight characters, so near the centre there is empty space between the
+  axis title and the numbers.
+- Far from the centre and zoomed in, neighbouring tick labels can show the same text, because pyqtgraph
+  prints at most six significant digits (99 999.85 and 99 999.95 both print as 99999.9). The cursor readout
+  shows four significant figures, so it cannot resolve small distances there either. The map itself is
+  not affected.
+- The interface tests run without fonts (Qt's offscreen platform finds none on this machine and draws
+  boxes), so they check geometry and text content, not appearance. The suite also passes with fonts
+  enabled through `QT_QPA_FONTDIR`.
 
 Prototypes:
 - Renderer: background stars appear as short tangential dashes. Probable cause, reasoned but not yet
@@ -242,7 +259,12 @@ Claude Code's own `/code-review`, `/security-review` and `/simplify` are availab
 
 - Repository name: the GitHub repository is `black-hole-simulator`; the specification planned
   `black-hole-physics-lab`. Either is fine; a rename on GitHub keeps the history. Decide before Stage 10.
-- Whether checkpoint branches should be pushed to GitHub, and when. Until Sebastian says so, they stay local.
+- Checkpoint branches on GitHub: Sebastian published `checkpoint-1b` himself on 2026-11-12. Claude still
+  pushes nothing unless asked.
+- Install the two review skills, as copies of the inspected files in Sebastian's personal Claude skills
+  folder? Asked on 2026-11-12, not answered yet.
+- Map polish: Sebastian approved 1B as it looks on his screen. Showing slightly more than ±10 r_g after a
+  reset, so that the outermost tick labels appear, stays optional; change it only if he asks.
 - `prototypes/beta1.py` duplicates `black_hole_orbits.py`. Keep both, or remove one?
 - Order of Stages 3 and 4: §38 ranks Kerr directly after Schwarzschild, §48 schedules RF communications
   first. Default is the §48 order; confirm at the Stage 2 checkpoint.
@@ -263,6 +285,14 @@ Claude Code's own `/code-review`, `/security-review` and `/simplify` are availab
   learning summary and understanding check after, `LEARNING_NOTES.md`); use the `improve` and
   `thermo-nuclear-code-quality-review` skills only after inspection and approval; and the process
   PLAN → EXPLAIN → BUILD → TEST → TEACH → REVIEW → STOP. All of it is recorded in `CLAUDE.md`.
+- 2026-11-12 — Sebastian approved finishing Checkpoint 1B, including the fix for the map changing size
+  while panning. He committed the document edits himself (`e51d367`) and published `checkpoint-1b` on
+  GitHub. The questions about installing the review skills were left unanswered.
+- 2026-11-12 — Sebastian set a model-selection rule: Opus High by default, and Opus Max only after an
+  explicit, justified recommendation that he accepts. Recorded in `CLAUDE.md`.
+- 2026-11-12 — Sebastian ran the program, looked at the window and approved Checkpoint 1B. The work was
+  committed and merged into `main` locally, not pushed. The understanding-check questions and the
+  review-skill installation were not answered yet.
 
 ## How to resume in a new session
 
@@ -274,4 +304,5 @@ Claude Code's own `/code-review`, `/security-review` and `/simplify` are availab
    `.venv\Scripts\python.exe -m pip install -e ".[dev,prototypes]"`.
 5. Run `.venv\Scripts\python.exe -m pytest` and `.venv\Scripts\python.exe -m ruff check .` before changing anything.
 6. Propose the next checkpoint and wait for Sebastian's explicit approval before writing code.
-7. After the checkpoint: update this file (status table, verification matrix, known issues, feedback log).
+7. After the checkpoint: update this file (status table, verification matrix, known issues, feedback log)
+   and `LEARNING_NOTES.md`.
