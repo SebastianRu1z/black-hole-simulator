@@ -19,9 +19,9 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Physics",
 ]
 # The desktop interface needs Qt and pyqtgraph (real-time 2D graphics on top of Qt).
-# The physics and solvers need NumPy for arrays. bhlab.constants, bhlab.units and
-# bhlab.formatting import nothing outside the standard library.
-dependencies = ["PySide6-Essentials>=6.8", "pyqtgraph>=0.13.7", "numpy>=1.26"]
+# The physics and solvers need NumPy for arrays and SciPy for the adaptive DOP853 solver.
+# bhlab.constants, bhlab.units and bhlab.formatting import nothing outside the standard library.
+dependencies = ["PySide6-Essentials>=6.8", "pyqtgraph>=0.13.7", "numpy>=1.26", "scipy>=1.11"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.8"]

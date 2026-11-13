@@ -97,6 +97,22 @@ def first_order_system(acceleration: Acceleration) -> RightHandSide:
     return f
 
 
+def validated_state(initial_state: Array) -> Array:
+    """``initial_state`` as a float array, after checking it can start an integration.
+
+    It must be flat, hold positions followed by as many velocities, and be finite.
+    """
+    y0 = np.asarray(initial_state, dtype=float)
+    if y0.ndim != 1 or len(y0) == 0 or len(y0) % 2 != 0:
+        raise ValueError(
+            "The initial state must be a flat list of positions followed by as many velocities; "
+            f"got shape {y0.shape}"
+        )
+    if not np.all(np.isfinite(y0)):
+        raise ValueError(f"The initial state must be finite; got {y0}")
+    return y0
+
+
 def integrate(
     acceleration: Acceleration,
     initial_state: Array,
@@ -118,14 +134,7 @@ def integrate(
         raise ValueError(
             f"The number of steps must be a whole number of at least 1; got {n_steps!r}"
         )
-    y0 = np.asarray(initial_state, dtype=float)
-    if y0.ndim != 1 or len(y0) == 0 or len(y0) % 2 != 0:
-        raise ValueError(
-            "The initial state must be a flat list of positions followed by as many velocities; "
-            f"got shape {y0.shape}"
-        )
-    if not np.all(np.isfinite(y0)):
-        raise ValueError(f"The initial state must be finite; got {y0}")
+    y0 = validated_state(initial_state)
 
     states = np.empty((n_steps + 1, len(y0)))
     states[0] = y0

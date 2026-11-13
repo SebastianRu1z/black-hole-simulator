@@ -4,9 +4,10 @@ A growing technical reference for understanding this project: the physics, the m
 Python and the engineering ideas behind the code. It is organised by topic, not by date. Each
 entry names the checkpoint that introduced it, and every new checkpoint adds to the sections below.
 
-Last updated: 2026-11-12, Checkpoint 1C-1. Covered so far: 1A (units, constants, the window), 1B (the
-2D map) and 1C-1 (the Newtonian engine: equations of motion, RK4, velocity Verlet). Orbits are computed
-and tested, but not yet shown in the window; that is Checkpoint 1D.
+Last updated: 2026-11-12, Checkpoint 1C-2. Covered so far: 1A (units, constants, the window), 1B (the
+2D map), 1C-1 (equations of motion, RK4, velocity Verlet) and 1C-2 (adaptive DOP853, events, orbital
+elements, the `python -m bhlab.orbit` command). Orbits are computed and tested, but not yet shown in
+the window; that is Checkpoint 1D.
 
 File paths in this document are relative to `src/bhlab/` unless they start with `tests/`.
 
@@ -98,6 +99,33 @@ Useful results for checking the program (all with GM = 1):
 Code: `physics/newtonian.py`. The model is wrong close to a black hole. It has no horizon and no
 ISCO, and at r = 100 the particle already moves at a tenth of the speed of light. It is the starting
 point that general relativity corrects in Stage 2.
+
+### 1.7 Orbital elements: every Newtonian orbit is a conic (1C-2)
+
+Under 1/r² gravity every orbit is a conic section with the mass at one focus: an ellipse (a circle
+is the special case e = 0), a parabola or a hyperbola. One position and one velocity fix it
+completely, because three quantities are constant along it (GM = 1):
+
+    energy               E = v²/2 − 1/r
+    angular momentum     L = x v_y − y vₓ
+    eccentricity vector  e = (v² − 1/r) r − (r·v) v      points at periapsis, length e
+
+| Element | Formula | Bound (E < 0) | Parabolic (E = 0) | Unbound (E > 0) |
+|---|---|---|---|---|
+| eccentricity | \|e\| | 0 ≤ e < 1 | 1 | e > 1 |
+| semi-major axis | a = −1/(2E) | positive | ∞ | negative |
+| periapsis | r_p = L²/(1 + e) | yes | yes | yes |
+| apoapsis | r_a = a(1 + e) | yes | ∞ | ∞ |
+| period | T = 2π a^(3/2) | yes | ∞ | ∞ |
+
+Worked example, a state between periapsis and apoapsis: (x, y) = (−50, 86.60), (vₓ, v_y) = (−0.1, 0).
+
+- r = 100, v² = 0.01, r·v = 5.
+- E = 0.005 − 0.01 = −0.005, so a = 100.
+- e = (0.01 − 0.01)·r − 5·(−0.1, 0) = (0.5, 0), so e = 0.5 and periapsis lies along +x.
+
+A fall from rest is the extreme case: L = 0, e = 1, a flattened ellipse that runs straight into
+the mass. Code: `physics/orbital_elements.py`.
 
 ## 2. Mathematics
 
@@ -222,6 +250,63 @@ correctly: a wrong coefficient usually drops the order.
 
 A smaller step never fixes a model error. A perfect solution of the Newtonian equations is still a
 wrong description of an orbit at 10 r_g.
+
+### 2.11 Adaptive step size (1C-2)
+
+A fixed step must suit the hardest part of the orbit. On the e = 0.9 ellipse the particle passes
+periapsis at r = 10 about 360 times faster in angle than it turns at apoapsis, so a fixed step
+wastes work almost everywhere. An adaptive method chooses each step itself:
+
+1. Take a step of length h with two formulas of different order that share their slope samples.
+   DOP853 has an 8th-order result and lower-order companions.
+2. Their difference estimates the error of the step, err.
+3. Accept the step if err ≤ atol + rtol·|y|. Otherwise reject it and retry with a smaller h.
+4. Choose the next step as roughly h·(tolerance/err)^(1/8) with a safety factor: larger when the
+   step was easy, smaller when it was hard.
+
+Measured at e = 0.9 over one orbit:
+
+| Method | Force evaluations | End error (GM/c²) |
+|---|---|---|
+| RK4, 1000 steps | 4 000 | 1.8 |
+| RK4, 4000 steps | 16 000 | 4.7 × 10⁻³ |
+| DOP853, rtol = 10⁻¹⁰ | 1 334 | 1.2 × 10⁻⁶ |
+
+Two cautions. The tolerance limits the error of each step, not the error at the end of a long run.
+And a tolerance cannot go below about 10⁻¹⁴ in double precision; the program refuses rtol < 10⁻¹³
+instead of letting SciPy quietly raise it.
+
+### 2.12 Events: finding when something happens (1C-2)
+
+An event is a zero crossing of a function g(t, y) of the motion:
+
+| Event | g(t, y) | Crossing direction |
+|---|---|---|
+| periapsis | r·v = x vₓ + y v_y | negative to positive (stops approaching) |
+| apoapsis | r·v | positive to negative (stops receding) |
+| reaching radius R | √(x² + y²) − R | either, or one chosen direction |
+
+After each step the solver compares the sign of g at both ends. If it changed, it finds the crossing
+inside the step with a root finder (Brent's method), using a polynomial that interpolates the
+solution between the step's end points. That is why event times are far more precise than the step
+length: about 10⁻⁹ of a period here, with steps of several percent of a period.
+
+### 2.13 Exact solutions used as benchmarks (1C-2)
+
+**Kepler's equation** gives the time to reach any point of an ellipse. With the eccentric anomaly E
+(an angle, not the energy):
+
+    r = a(1 − e cos E)          t = √(a³) (E − e sin E)    (time since periapsis, GM = 1)
+
+Example: when does the a = 100, e = 0.5 orbit first reach r = 100? cos E = 0, so E = π/2 and
+t = 1000·(π/2 − 0.5) = 1070.80 GM/c³. The program's event: 1070.80, agreeing to 10⁻⁹.
+
+**Free fall from rest** at r₀, with the angle η running from 0:
+
+    r = r₀ cos²η          t = √(r₀³/2) (η + sin η cos η)
+
+From r₀ = 10 to r = 2: cos²η = 0.2, η = 1.107, t = 33.70 GM/c³, which is 1.66 ms for 10 M☉. The program
+stops at 33.70, agreeing to 4 × 10⁻¹².
 
 ## 3. Python
 
@@ -365,6 +450,48 @@ changed to 1, 1, 3, 1 in a temporary copy: 7 tests failed. Breaking the Verlet v
 fail. A test suite that would pass whatever the code did is worse than none, because it gives false
 confidence.
 
+### 3.10 Using a library's interface: SciPy (1C-2)
+
+`solve_ivp(f, (t0, t1), y0, method="DOP853", rtol=..., atol=..., events=[...])` is the call the
+program wraps. Two things about it are worth knowing.
+
+SciPy reads event settings from *attributes of the event function*. In Python a function is an
+object, so it can carry data:
+
+```python
+def event(t, y):
+    return spec.function(t, y)
+
+
+event.terminal = spec.terminal  # stop the run at this event?
+event.direction = spec.direction  # +1, −1 or 0
+```
+
+The program wraps SciPy instead of calling it everywhere. The wrapper (`integrate_adaptive`) checks
+the input, removes the false event at t = 0, refuses settings SciPy would quietly change, and
+returns read-only results in the project's own types. The rest of the code then never depends on
+SciPy's quirks.
+
+### 3.11 Values that may be missing: None and ∞ (1C-2)
+
+A circular orbit has no periapsis direction, so `periapsis_angle` has the type `float | None` and is
+`None` there. Code that uses it must check first, as the command line does. Quantities that exist but
+are infinite, such as the period of an escaping orbit, are `math.inf` instead. That is a real value
+in the mathematics, and `math.isinf` tests for it.
+
+### 3.12 A command-line program (1C-2)
+
+`src/bhlab/orbit.py` uses `argparse`: each `add_argument` declares an option, its type, its default
+and its help text, and `--help` is generated from them. Other points:
+- `main(argv)` returns an exit code: 0 for success, 2 for invalid input. Scripts and other programs
+  read it to know whether the run worked.
+- Errors go to `sys.stderr` and results to `sys.stdout`, so a redirected result file stays clean.
+- `if __name__ == "__main__":` runs only when the file is started as a program
+  (`python -m bhlab.orbit`), not when the tests import `main`.
+- On Windows, output redirected to a file uses an old code page that cannot write M☉ or GM/c³. The
+  program switches its output to UTF-8 when it starts. A test runs it as a separate process with
+  piped output to catch this.
+
 ## 4. Key functions
 
 | Function | File | Takes | Gives |
@@ -386,6 +513,10 @@ confidence.
 | `rk4_step` | `solvers/fixed_step.py` | f, t, y, h | y at t + h |
 | `velocity_verlet_step` | `solvers/fixed_step.py` | force law, x, v, a, h | new x, v and a |
 | `integrate` | `solvers/fixed_step.py` | force law, start state, h, number of steps, method | a read-only `Trajectory` |
+| `orbital_elements` | `physics/orbital_elements.py` | a state | kind, E, L, e, a, periapsis, apoapsis, period, periapsis angle |
+| `integrate_adaptive` | `solvers/adaptive.py` | force law, start state, duration, rtol, atol, events | an `AdaptiveTrajectory` with steps, events and why it stopped |
+| `periapsis`, `apoapsis`, `radius_reached` | `solvers/adaptive.py` | (a radius, a direction, whether to stop) | an `EventSpec` to watch for |
+| `main` | `orbit.py` | command-line arguments | prints the orbit and its events; returns 0 or 2 |
 
 `format_length_auto` without its docstring, as an example of a rule written as code:
 
@@ -430,6 +561,14 @@ Only connections that are real are listed here.
 - **Step size as sampling (1C-1).** A step of h samples the motion h apart. Too coarse a step gives
   wrong answers or unstable growth, much as too low a sample rate does in a digital filter. At 250
   steps per orbit Verlet already misses the start point by 2.8 r_g after one orbit.
+- **RELTOL and ABSTOL (1C-2).** SPICE accepts a transient time step when its estimated local error is
+  below RELTOL·|value| + ABSTOL, and otherwise cuts the step. `integrate_adaptive` does the same with
+  rtol and atol. Fast edges in a circuit play the part of periapsis in an orbit: that is where both
+  programs take small steps.
+- **Zero-crossing detection (1C-2).** Events work like an oscilloscope trigger or a comparator. A
+  signal (here r·v) is watched for a crossing of zero in a chosen direction, the rising or falling
+  edge, and the crossing time is then located far more finely than the sampling interval, as a
+  digital oscilloscope interpolates between samples.
 - **Not built yet.** Time dilation as a frequency shift, signal paths along light rays, spectra and
   link budgets come in Stages 3 and 5.
 
@@ -480,14 +619,25 @@ Predict first, then start the program with `.venv\Scripts\python.exe -m bhlab` a
     Prediction: after one orbit the radius has grown to about 107.7 and the energy has risen from
     −0.005 to −0.00466. Euler spirals outward. RK4 with the same step stays at 100 to within 10⁻⁷.
 
+13. Run `.venv\Scripts\python.exe -m bhlab.orbit --orbits 3`. Prediction: apoapsis at 3142, 9425 and
+    15708 GM/c³, that is (k + ½)·T. Then add `--mass 4.3e6` and check that the period reads 1.540 d.
+14. Fall from rest: `--x 10 --vy 0 --stop-radius 2`. Prediction: it stops at t = 33.70 GM/c³ (section
+    2.13). Repeat with `--stop-radius 1` and work out the new time by hand first.
+15. Escape: `--vy 0.25 --duration 2000`. Prediction: "unbound", e = 2.125, period ∞. Without
+    `--duration` the program refuses to run; read its message and explain why.
+16. Loosen the tolerance: `--orbits 3 --rtol 1e-5`. Prediction: far fewer steps and a larger energy
+    error. The event times change only slightly; compare them with (k + ½)·T.
+17. In `examples\integrator_comparison.py` set `ECCENTRICITY = 0.9` and compare the "evaluations" of
+    DOP853 with the 4 per step of RK4 at a similar end error.
+
 ## 7. To study next
 
-Before Checkpoint 1C-2 (SciPy, events, orbital elements):
+Before Checkpoint 1D (placing particles and running them in the window):
 
-- Adaptive step size: estimate the error of each step and choose h to keep it below a tolerance.
-- Embedded Runge–Kutta pairs (Dormand–Prince), the idea behind SciPy's `solve_ivp`.
-- Root finding in time: locating the moment the particle reaches periapsis or crosses a radius.
-- Orbital elements from a state vector: eccentricity vector, semi-major axis from E = −1/(2a).
+- Qt timers and the animation loop: redrawing the screen at a steady rate while time passes.
+- Why the physics time step must not depend on the frame rate, and how to step a simulation by a
+  fixed amount of simulated time per frame.
+- Mouse events in pyqtgraph: turning a click and drag into a position and a velocity.
 
 Further ahead, for Stage 2: the idea of a metric, proper time against coordinate time, and the
 effective potential of an orbit.

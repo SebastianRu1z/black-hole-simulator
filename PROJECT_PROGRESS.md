@@ -1,7 +1,7 @@
 # Black Hole Physics Lab — Project Progress
 
-Last updated: 2026-11-12. Checkpoints 1A and 1B are approved and merged into `main`. 1A is pushed; the 1B
-merge is local only. Checkpoint 1C-1 is approved and committed on branch `checkpoint-1c`; 1C-2 is proposed.
+Last updated: 2026-11-13. Checkpoints 1A, 1B and 1C (1C-1 and 1C-2) are approved and merged into `main`.
+Only 1A is pushed; the later merges are local. Checkpoint 1D has been proposed and is not approved.
 
 This file is the single source of truth for where the project stands.
 **Read it first in every new session, then inspect the code. Do not rebuild or overwrite existing work.**
@@ -32,12 +32,12 @@ This file is the single source of truth for where the project stands.
 | Item | State |
 |---|---|
 | Current stage | Stage 1 — working interactive simulation foundation (Newtonian) |
-| Last completed checkpoint | **1C-1 — Newtonian equations of motion, RK4 and velocity Verlet** (completed 2026-11-12) |
-| Last approved checkpoint | **1C-1** (approved by Sebastian on 2026-11-12); 1A and 1B approved earlier the same day |
-| Checkpoint in progress | None. 1C was split into 1C-1 (approved) and 1C-2 (SciPy DOP853 with events, orbital elements, command-line run; proposed 2026-11-12, not started, needs an explicit yes). |
-| Next step | Sebastian decides on the 1C-2 plan. No 1C-2 code before an explicit yes. 1C-2 continues on `checkpoint-1c`; that branch is merged into `main` once the whole of 1C is approved. |
-| Automated tests | 233 passed, 0 failed on branch `checkpoint-1c` (pytest 9.2.0, Python 3.14.7, 2026-11-12); 181 on `main`. `ruff check` and `ruff format --check` clean. |
-| Git | 1A (commit `ccea74b`) is merged into `main`. Each later checkpoint is built on its own branch and merged after approval. 1B (`7e9526b`, `e51d367` by Sebastian, and the completing commit) was merged into `main` locally on 2026-11-12 after Sebastian's approval. Branch `checkpoint-1c` was created from `main` (at `50b8baa`) after Sebastian approved starting 1C-1. The approved 1C-1 is committed there: not merged, not pushed. |
+| Last completed checkpoint | **1C-2 — adaptive DOP853 with events, orbital elements, command-line run** (completed 2026-11-12) |
+| Last approved checkpoint | **1C-2** (approved by Sebastian on 2026-11-13); with it the whole of 1C. 1A, 1B and 1C-1 approved on 2026-11-12 |
+| Checkpoint in progress | None. 1D has not been started and needs an explicit yes. |
+| Next step | Sebastian decides on the plan for 1D, proposed on 2026-11-13 as two smaller checkpoints: 1D-1 (headless simulation loop with fixed physics ticks, run controls, particles entered as numbers and drawn on the map) and 1D-2 (placing particles with the mouse, selecting and removing them). No 1D code before an explicit yes. Then branch `checkpoint-1d` from `main`. |
+| Automated tests | 286 passed, 0 failed on `main` after merging 1C (pytest 9.2.0, Python 3.14.7, 2026-11-13). `ruff check` and `ruff format --check` clean. |
+| Git | 1A (commit `ccea74b`) is merged into `main`. Each later checkpoint is built on its own branch and merged after approval. 1B (`7e9526b`, `e51d367` by Sebastian, and the completing commit) was merged into `main` locally on 2026-11-12 after Sebastian's approval. Branch `checkpoint-1c` was created from `main` (at `50b8baa`) after Sebastian approved starting 1C-1. 1C-1 and 1C-2 were committed there and, after Sebastian approved 1C-2 on 2026-11-13, merged into `main` locally. |
 | GitHub | Remote `origin` is `SebastianRu1z/black-hole-simulator`, created by Sebastian. On 2026-11-12 Sebastian asked for the approved 1A work to be pushed to it; `main` was pushed at commit `d903597`. Push `main` only when Sebastian asks; never push an unapproved checkpoint. Visibility not checked. On 2026-11-12 Sebastian also published `checkpoint-1b` himself, at `e51d367`. The approved 1B work on `main` and the completing commit on `checkpoint-1b` are not pushed: push only when Sebastian asks. |
 
 ## What exists today
@@ -75,7 +75,7 @@ into the package, with proper tests, when those stages are reached.
   uncommitted work (this happened once during 1A). Check the branch and `git stash list` before working.
 - `.venv/` was created by Sebastian in the project folder. Installed: PySide6-Essentials 6.12.0,
   shiboken6 6.12.0, pytest 9.2.0, ruff 0.17.4, numpy 2.5.4, matplotlib 3.11.2, SciPy 1.18.1. NumPy has been
-  a declared dependency since 1C-1; SciPy is installed but becomes a declared dependency only in 1C-2.
+  a declared dependency since 1C-1 and SciPy since 1C-2.
 - GitHub CLI (`gh`) is installed (seen on 2026-11-12 in `C:\Program Files\GitHub CLI`; not used, and its
   login state was not checked). Node.js is not installed.
 - pyqtgraph 0.14.0 is installed and has been a declared dependency since 1B.
@@ -97,8 +97,11 @@ src/bhlab/
     formatting.py      text formatting of quantities (no Qt)
     physics/
         newtonian.py       point-mass gravity: acceleration, E, L, circular orbits, Kepler period (1C-1)
+        orbital_elements.py  a, e, periapsis, apoapsis, period, orientation from one state (1C-2)
     solvers/
         fixed_step.py      RK4, velocity Verlet, integrate() -> Trajectory (1C-1)
+        adaptive.py        DOP853 via SciPy with events, integrate_adaptive() -> AdaptiveTrajectory (1C-2)
+    orbit.py           python -m bhlab.orbit: orbital elements and events from the command line (1C-2)
     ui/
         app.py             QApplication set-up, run()
         theme.py           colours and style sheet
@@ -108,22 +111,22 @@ src/bhlab/
         viewport.py        the 2D map: reference circles, camera, overlays
         scale_bar.py       scale bar and its 1-2-5 rounding
         scales_panel.py    table of characteristic scales
-tests/                 233 tests: constants, units, formatting, architecture, interface, map, physics, solvers
-examples/              integrator_comparison.py: RK4 against Verlet at several step sizes (1C-1)
+tests/                 286 tests: constants, units, formatting, architecture, interface, map, physics, solvers, CLI
+examples/              integrator_comparison.py: RK4, Verlet and DOP853 compared (1C-1, 1C-2)
 docs/images/           screenshots of each checkpoint; the README shows the latest
 prototypes/            the original scripts, unchanged
 ```
 
 Planned additions (created only when a checkpoint gives them real content): more of `physics/`
-(Schwarzschild in Stage 2, Kerr in Stage 4) and `solvers/` (adaptive DOP853 in 1C-2), `simulation/` (1D), `analysis/` and `export/`
+(Schwarzschild in Stage 2, Kerr in Stage 4), `simulation/` (1D), `analysis/` and `export/`
 (1E–1F), and `docs/` PHYSICS, NUMERICAL_METHODS, EXPERIMENTS, VALIDATION, ARCHITECTURE (from 1F).
 
 Rules: `ui/` imports the physics, never the reverse (`tests/test_architecture.py` enforces it); the engine
 runs headless; internal units are geometrized (G = c = 1, lengths in GM/c², times in GM/c³) with conversion
 at the edges.
 
-Stack: Python ≥ 3.12, NumPy, PySide6 (Essentials wheel), pyqtgraph, pytest, ruff, hatchling. Still to come:
-SciPy (`solve_ivp`, DOP853) in 1C-2, Matplotlib for export-quality figures
+Stack: Python ≥ 3.12, NumPy, SciPy, PySide6 (Essentials wheel), pyqtgraph, pytest, ruff, hatchling. Still to
+come: Matplotlib for export-quality figures
 in 1F, ModernGL or VisPy for 3D in Stage 6.
 
 ## Roadmap
@@ -132,7 +135,7 @@ Spec sections are numbered as in Sebastian's specification (§1–§51).
 
 | Stage | Scope | Spec | Experiments | Status |
 |---|---|---|---|---|
-| 1 | Interactive foundation: Newtonian engine, 2D view, particle placement, measurements, tests | §2A, §5, §6, §7, §11–§13 (Newtonian parts) | 1; Newtonian parts of 8, 9 | in progress (1A and 1B approved) |
+| 1 | Interactive foundation: Newtonian engine, 2D view, particle placement, measurements, tests | §2A, §5, §6, §7, §11–§13 (Newtonian parts) | 1; Newtonian parts of 8, 9 | in progress (1A, 1B and 1C approved) |
 | 2 | Schwarzschild relativity: timelike and null geodesics, ISCO, photon sphere, time dilation, radial infall, Newton vs GR, validation | §2B, §8, §9, §13 | 2–7, 10 | not started (prototypes exist) |
 | 3 | RF communication physics: emitters/receivers, null-geodesic signal paths, gravitational and Doppler shift via g = (k·u)_obs/(k·u)_em, Shapiro delay, received-signal analysis | §43, §26 | EE 1, EE 2 | not started |
 | 4 | Kerr black holes: geodesics with E, L_z, Carter constant; horizons, ergosphere, frame dragging, prograde/retrograde ISCO, orbital frequencies; Penrose process as analytic demonstration | §23, §24, §31, §36 | 11, 12, 20 | not started |
@@ -152,7 +155,7 @@ the verification matrix below (§36), and references that are checked before the
 |---|---|---|---|
 | 1A | Project skeleton, units module, application window | package `bhlab`, tested constants/units/formatting modules, PySide6 window showing live characteristic scales for a chosen mass, pytest and ruff wired up | **approved 2026-11-12** |
 | 1B | 2D black hole view and camera | pyqtgraph viewport: horizon disc, photon-sphere and ISCO circles (labelled as GR reference radii the Newtonian engine does not use), scale bar, pan/zoom/reset, cursor readout; the scales table moves to a side panel | **approved 2026-11-12** |
-| 1C | Newtonian physics engine (headless) | test-particle equations of motion about a point mass; velocity Verlet, RK4, SciPy DOP853 with event detection; orbital elements; pytest checks against Kepler; command-line run | split on 2026-11-12. **1C-1** (equations of motion, RK4, velocity Verlet, Kepler and convergence tests): **approved 2026-11-12**. **1C-2** (DOP853 with events, orbital elements, command-line run): not started |
+| 1C | Newtonian physics engine (headless) | test-particle equations of motion about a point mass; velocity Verlet, RK4, SciPy DOP853 with event detection; orbital elements; pytest checks against Kepler; command-line run | split on 2026-11-12. **1C-1** (equations of motion, RK4, velocity Verlet, Kepler and convergence tests): **approved 2026-11-12**. **1C-2** (DOP853 with events, orbital elements, command-line run): **approved 2026-11-13** |
 | 1D | Particle placement and run controls | click-and-drag placement with a velocity vector, exact numeric inputs, rejection of invalid initial conditions, multiple particles, play/pause/reset/single-step/speed with physics decoupled from frame rate | not started |
 | 1E | Trails and live measurements | orbital trails, predicted path, selected-object panel (r, v, E, L, e, a, T, periapsis, apoapsis, status), unit switching, warning where the Newtonian model stops being trustworthy | not started |
 | 1F | Validation dashboard, plots, export, Stage 1 docs | conservation-error plots, solver comparison and convergence study, CSV/JSON/PNG export, Newtonian parts of README/PHYSICS/NUMERICAL_METHODS/VALIDATION | not started |
@@ -212,6 +215,29 @@ Differences from the plan:
 - The tests were checked by breaking each integrator on purpose in a temporary copy: 7 tests failed for
   wrong RK4 weights, 5 for a wrong Verlet velocity update.
 
+### Checkpoint 1C-2: what was built, and how it differs from the plan
+
+Built as planned: `physics/orbital_elements.py`; `solvers/adaptive.py` (DOP853 through SciPy, events for
+periapsis, apoapsis and crossing a radius, terminal events); `python -m bhlab.orbit`; SciPy declared as a
+dependency; DOP853 added to `examples/integrator_comparison.py`; 53 tests.
+
+Decisions the plan did not spell out:
+- The wrapper does not report events at exactly t = 0. SciPy reported a periapsis at t = 0 for an orbit
+  that starts there.
+- It refuses rtol < 1e-13, because SciPy would quietly raise it to about 2.2e-14, and it refuses a stopping
+  event that already holds at t = 0.
+- Infinite apoapsis, period and (for a parabola) semi-major axis are `math.inf`; only the periapsis
+  direction of a circle is `None`.
+- The input check of the fixed-step `integrate` moved into a shared `validated_state`, used by both
+  integrators. Its behaviour is unchanged and its tests still pass.
+- `python -m bhlab.orbit` writes UTF-8, so that symbols such as M☉ survive output redirected to a file on
+  Windows.
+- The event table starts with a "start" row. In a one-orbit run the return to periapsis lands within the
+  tolerance just after the end time, so it is often not listed.
+- Checked by breaking the code on purpose in a temporary copy. A sign error in the eccentricity vector at
+  first failed only one test, because every hand-worked state sat at periapsis or apoapsis, where r·v = 0.
+  A test from a state in the middle of the orbit was added.
+
 ## Verification matrix
 
 | Physics model | Where | Equations implemented | Automated tests | Analytic benchmarks | Convergence evidence | Limitations documented |
@@ -220,6 +246,8 @@ Differences from the plan:
 | Schwarzschild reference radii r_s, r_ph, r_ISCO | `bhlab.units` (1A) | stated as 2, 3, 6 × GM/c² | ratios tested | **none yet**: the values are entered as known results, not derived from the geodesic equations. Derivation is a Stage 2 task | — | yes |
 | 2D map (display geometry, not a physics model): map ↔ pixel coordinates, scale bar, cursor readout, choice of length unit | `bhlab.ui.viewport`, `bhlab.ui.scale_bar`, `bhlab.ui.main_window`, `bhlab.formatting` (1B) | r = √(x² + y²), φ = atan2(y, x); 1-2-5 rounding of the scale bar; physical length = length in r_g × GM/c² | 55 map tests, 12 for `format_length_auto` | circles drawn at 2, 3 and 6 r_g; the point (3, 4) reads r = 5 and φ = 53.1°, and 5 r_g = 73.83 km for 10 M☉; bar length in pixels equals its length × the scale; the map point under the cursor stays put during wheel zoom (1e-6 r_g); panning and zooming leave the size of the map area unchanged, panning also the scale | not applicable | yes (module docstrings, known issues below) |
 | Newtonian point-mass dynamics: equations of motion and the RK4 and velocity Verlet integrators | `bhlab.physics.newtonian`, `bhlab.solvers.fixed_step` (1C-1) | yes (d²r/dt² = −r/r³; E = v²/2 − 1/r; L = x v_y − y vₓ; RK4; velocity Verlet) | 52 pytest tests (21 physics, 31 solvers) | by hand: a, E, L at sample points; circular speed √(1/r), E = −1/(2r), L = √r; T = 2π a^(3/2) agrees with the SI form of Kepler's law; RK4 exact on a cubic and equal to the Taylor series of e^h; Verlet exact for constant acceleration; orbits close after one Kepler period (RK4 to 1e-8 a for a = 25, 100, 400); periapsis 50 and apoapsis 150 for a = 100, e = 0.5 | measured orders 4.06 (RK4) and 2.00 (Verlet) from halving the step; over 40 orbits the RK4 energy error grows 15-fold while Verlet's stays bounded; Verlet conserves L to 1e-12; harmonic oscillator: RK4 energy decays monotonically, Verlet's stays within 1 % | yes (module docstrings; Newtonian model not valid near the black hole). Fixed steps only: adaptive steps and events come in 1C-2 |
+| Newtonian orbital elements | `bhlab.physics.orbital_elements` (1C-2) | yes (eccentricity vector, a = −1/(2E), r_p = L²/(1 + e), r_a = a(1 + e), T = 2π a^(3/2)) | 14 pytest tests | by hand: circle; ellipse from periapsis, from apoapsis and from a mid-orbit state (E = π/2); rotated orbits; clockwise motion; hyperbola (a = −100, e = 1.5); exact parabola (E = 0); fall from rest (e = 1, a = r₀/2) | elements constant along a DOP853 run to 1e-8 over three orbits | yes (module docstring) |
+| Adaptive integration (DOP853) and events | `bhlab.solvers.adaptive` (1C-2) | SciPy `solve_ivp` with DOP853; events as zero crossings of r·v and r − R | 27 pytest tests, plus 12 for the command line | periapsis and apoapsis at k·T and (k + ½)·T to 1e-8; crossing of r = 100 at 1070.80 from Kepler's equation to 1e-9; free fall from r = 10 stops at r = 2 at the analytic 33.70 to 1e-9; custom event at T/4 on a circle | end error falls monotonically as rtol tightens (1.5e-4 to 1.7e-9 for rtol 1e-6 to 1e-12); at e = 0.9 an end error of 1.1e-6 with 1334 evaluations, against about 0.03 for RK4 with 10 000 | yes (module docstring; not symplectic; tolerance is per step) |
 | Schwarzschild timelike geodesics | prototype script | yes | script self-test, 6 checks (not pytest) | circular-orbit period (0.01 %), weak-field precession (within 2 %), capture inside ISCO | none | partly, in docstring |
 | Schwarzschild null geodesics and thin-disc image | prototype script | yes | none | none (visual check only) | none | partly, in docstring |
 | Kerr, RF link, DSP, interferometry, curved-spacetime EM, research extensions | not started | — | — | — | — | — |
@@ -227,7 +255,7 @@ Differences from the plan:
 No model in this project may be described as validated or research-grade until its row is filled in.
 
 Test suite breakdown (2026-11-12): constants 6, units 40, formatting 41, architecture 1, interface 38, map 55,
-Newtonian physics 21, fixed-step solvers 31. Total 233.
+Newtonian physics 21, fixed-step solvers 31, orbital elements 14, adaptive solver 27, command line 12. Total 286.
 
 ## Known issues and limitations
 
@@ -258,11 +286,21 @@ Checkpoint 1B:
 Checkpoint 1C-1:
 - The integrators loop in pure Python: about 10 µs per RK4 step and 3 µs per Verlet step for one
   particle. Enough for tests and a few particles; to be measured again when 1D animates many.
-- Fixed steps only. Highly eccentric orbits need very small steps near periapsis (at e = 0.9 and 1000
-  steps per orbit Verlet misses its start point by 138 r_g). Adaptive steps come in 1C-2.
-- Nothing stops a particle that falls onto r = 0 between two steps: it receives a huge but finite kick.
-  Collision events are 1C-2.
+- Fixed steps waste work on eccentric orbits (at e = 0.9 and 1000 steps per orbit Verlet misses its start
+  point by 138 r_g). Use the adaptive solver from 1C-2 there.
+- The fixed-step integrators cannot stop at a radius: a particle that falls onto r = 0 between two steps
+  receives a huge but finite kick. The adaptive solver's terminal radius event handles this.
 - The engine is not connected to the window yet (1D).
+
+Checkpoint 1C-2:
+- The tolerances bound the error of each step, not the error at the end. Over three orbits at rtol = 1e-10
+  the energy drifts by 6.7e-10; long runs need a check of the conservation laws, as the command line prints.
+- Event times are accurate to about 1e-9 of a period at the default tolerance. An event that falls within
+  that margin of the end time may or may not be reported.
+- DOP853 is not symplectic: over very many orbits its energy error grows slowly, unlike Verlet's.
+- A periapsis direction is reported only for e ≥ 1e-10; below that the orbit is treated as circular.
+- Still Newtonian: no horizon, and the radius event at r = 2 is a geometric stop, not the physics of a
+  horizon.
 
 Prototypes:
 - Renderer: background stars appear as short tangential dashes. Probable cause, reasoned but not yet
@@ -325,6 +363,9 @@ Claude Code's own `/code-review`, `/security-review` and `/simplify` are availab
   1C-1 was built on branch `checkpoint-1c` with Opus High.
 - 2026-11-12 — Sebastian approved Checkpoint 1C-1. It was committed on `checkpoint-1c`, not merged or pushed.
   The understanding-check questions were not answered.
+- 2026-11-12 — Sebastian approved starting Checkpoint 1C-2. Built on `checkpoint-1c` with Opus High.
+- 2026-11-13 — Sebastian approved Checkpoint 1C-2. 1C-2 was committed and `checkpoint-1c` merged into `main`
+  locally, not pushed. The understanding-check questions were not answered.
 
 ## How to resume in a new session
 
