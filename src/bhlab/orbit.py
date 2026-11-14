@@ -2,13 +2,18 @@
 
     python -m bhlab.orbit                                  the a = 100, e = 0.5 ellipse, one orbit
     python -m bhlab.orbit --x 50 --vy 0.1732 --orbits 3 --mass 4.3e6
-    python -m bhlab.orbit --x 10 --vy 0 --stop-radius 2    fall from rest at r = 10
+    python -m bhlab.orbit --x 10 --vy 0 --duration 100     fall from rest at r = 10
     python -m bhlab.orbit --help
 
 Positions are in GM/c² and velocities in units of c. The program prints the orbital elements
 of the starting state, integrates the motion with DOP853, and lists every periapsis, apoapsis
-and (optionally) the moment the particle falls inward through a chosen radius, with times and
-lengths also in physical units for the chosen mass. Invalid input is reported, never adjusted.
+and the moment the particle falls inward through the stop radius, with times and lengths also
+in physical units for the chosen mass. Invalid input is reported, never adjusted.
+
+The stop radius is r = 2 GM/c², the event horizon, unless --stop-radius chooses another. Newton's
+theory has no horizon, so this is where the model is declared to end, as in the simulation the
+window shows. Without a stop the particle of a plunging orbit would reach r = 0, where the
+acceleration is infinite and no solver can continue.
 """
 
 import argparse
@@ -19,8 +24,14 @@ from collections.abc import Sequence
 from bhlab.formatting import format_length_auto, format_number, format_time_convenient
 from bhlab.physics.newtonian import acceleration, make_state, specific_energy
 from bhlab.physics.orbital_elements import orbital_elements
-from bhlab.solvers.adaptive import apoapsis, integrate_adaptive, periapsis, radius_reached
-from bhlab.units import BlackHole
+from bhlab.solvers.adaptive import (
+    IntegrationError,
+    apoapsis,
+    integrate_adaptive,
+    periapsis,
+    radius_reached,
+)
+from bhlab.units import HORIZON_RADIUS_RG, BlackHole
 
 DEFAULT_VY = math.sqrt(0.03)
 """With x = 50 this starts the a = 100, e = 0.5 ellipse at periapsis.
@@ -46,7 +57,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     length.add_argument("--duration", type=float, help="how long to follow, in GM/c³")
     parser.add_argument(
-        "--stop-radius", type=float, help="stop when the particle falls inward through this r"
+        "--stop-radius",
+        type=float,
+        default=HORIZON_RADIUS_RG,
+        help="stop when the particle falls inward through this r (default 2, the event horizon)",
     )
     parser.add_argument(
         "--mass", type=float, default=10.0, help="black hole mass in solar masses (default 10)"
@@ -58,18 +72,26 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Run the command line. Returns 0 on success and 2 for invalid input."""
+    """Run the command line. Returns 0 on success, 1 if the solver fails, 2 for invalid input."""
     args = build_parser().parse_args(argv)
     try:
         _run(args)
     except ValueError as error:
         print(f"error: {error}", file=sys.stderr)
         return 2
+    except IntegrationError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 1
     return 0
 
 
 def _run(args: argparse.Namespace) -> None:
     state = make_state(args.x, args.y, args.vx, args.vy)
+    stop = radius_reached(args.stop_radius, direction=-1, stop=True)  # also checks the radius
+    if math.hypot(args.x, args.y) <= args.stop_radius:
+        raise ValueError(
+            f"The particle has to start outside the stop radius r = {args.stop_radius:g} GM/c²."
+        )
     black_hole = BlackHole.from_solar_masses(args.mass)
     elements = orbital_elements(state)
 
@@ -89,10 +111,8 @@ def _run(args: argparse.Namespace) -> None:
             f"{orbits:g} orbit{'s' if orbits != 1 else ''} = {format_number(duration)} GM/c³"
         )
 
-    events = [periapsis(), apoapsis()]
-    if args.stop_radius is not None:
-        events.append(radius_reached(args.stop_radius, direction=-1, stop=True))
-    run = integrate_adaptive(acceleration, state, duration, rtol=args.rtol, events=tuple(events))
+    events = (periapsis(), apoapsis(), stop)
+    run = integrate_adaptive(acceleration, state, duration, rtol=args.rtol, events=events)
 
     def length(value: float) -> str:
         if not math.isfinite(value):

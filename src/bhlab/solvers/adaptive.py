@@ -57,6 +57,17 @@ MIN_RTOL = 1e-13
 
 EventFunction = Callable[[float, Array], float]
 
+_FAILURE_HINT = (
+    "The solver needed ever smaller steps until it could not continue. This happens when the "
+    "motion runs into a point where the acceleration becomes infinite, such as r = 0 for a point "
+    "mass. Stop the run before that point with a terminal event, for example "
+    "radius_reached(2.0, direction=-1, stop=True)."
+)
+
+
+class IntegrationError(RuntimeError):
+    """The solver could not continue the motion: usually a singularity was reached."""
+
 
 def check_tolerances(rtol: float, atol: float) -> None:
     """Raise ValueError unless ``rtol`` and ``atol`` are tolerances DOP853 can honour."""
@@ -181,7 +192,10 @@ def integrate_adaptive(
         events=[_for_scipy(spec) for spec in events] or None,
     )
     if solution.status == -1:
-        raise RuntimeError(f"The integration failed: {solution.message}")
+        raise IntegrationError(
+            f"The integration failed at t = {solution.t[-1]:g} ({solution.message.rstrip('.')}). "
+            f"{_FAILURE_HINT}"
+        )
 
     found = []
     if events:
@@ -276,7 +290,10 @@ class AdaptiveStepper:
         """Advance by one step of the solver's own choosing."""
         message = self._solver.step()
         if self._solver.status == "failed":
-            raise RuntimeError(f"The integration failed at t = {self.time:g}: {message}")
+            raise IntegrationError(
+                f"The integration failed at t = {self.time:g} ({str(message).rstrip('.')}). "
+                f"{_FAILURE_HINT}"
+            )
         self._interpolant = None
         self._n_steps += 1
 

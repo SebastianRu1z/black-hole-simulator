@@ -9,6 +9,7 @@ from bhlab.physics.newtonian import acceleration, circular_orbit, kepler_period,
 from bhlab.physics.orbital_elements import orbital_elements
 from bhlab.solvers.adaptive import (
     EventSpec,
+    IntegrationError,
     apoapsis,
     integrate_adaptive,
     periapsis,
@@ -189,3 +190,30 @@ def test_custom_events_can_be_watched():
     crossing = EventSpec("x = 0", lambda _t, y: float(y[0]), direction=-1)
     run = integrate_adaptive(acceleration, circular_orbit(100.0), PERIOD, events=(crossing,))
     assert [event.time for event in run.events] == pytest.approx([PERIOD / 4], rel=1e-9)
+
+
+# --- reaching the singularity at r = 0 -----------------------------------------------------
+
+
+def test_a_fall_onto_the_point_mass_raises_a_named_error_that_explains_itself():
+    """Falling from rest at r₀ = 10 reaches r = 0 at t = (π/2)·√(r₀³/2) ≈ 35.12, where the
+    acceleration is infinite. The solver must say so instead of failing obscurely."""
+    with pytest.raises(IntegrationError) as caught:
+        integrate_adaptive(acceleration, make_state(10.0, 0.0, 0.0, 0.0), 100.0)
+    message = str(caught.value)
+    assert "acceleration becomes infinite" in message
+    assert "radius_reached" in message
+    failure_time = float(message.split("t = ")[1].split(" ")[0])
+    assert failure_time == pytest.approx(math.pi / 2.0 * math.sqrt(10.0**3 / 2.0), rel=1e-3)
+    assert isinstance(caught.value, RuntimeError)  # callers catching RuntimeError still work
+
+
+def test_the_same_fall_with_a_stop_at_the_horizon_ends_cleanly():
+    run = integrate_adaptive(
+        acceleration,
+        make_state(10.0, 0.0, 0.0, 0.0),
+        100.0,
+        events=(radius_reached(2.0, direction=-1, stop=True),),
+    )
+    assert run.stopped_by == "r = 2"
+    assert math.hypot(*run.states[-1][:2]) == pytest.approx(2.0, rel=1e-9)

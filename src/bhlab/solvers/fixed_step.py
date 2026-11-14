@@ -33,6 +33,14 @@ evaluation per step against four for RK4. Its strength is that it is *symplectic
 the geometric structure of Hamiltonian mechanics. In practice the energy error oscillates within
 a bound instead of drifting, and for a central force the angular momentum is conserved exactly,
 up to rounding.
+
+Stopping at a radius
+--------------------
+A fixed step cannot see a singularity coming. A particle falling onto a point mass would step
+over r = 0, receive a huge but finite kick and fly away with far more energy than it had. Pass
+``stop_radius`` and the run ends at the first step whose position lies inside that radius
+(``Trajectory.stopped`` is then True). That step is not the exact crossing, only the first one
+inside: :func:`bhlab.solvers.adaptive.integrate_adaptive` finds crossings precisely.
 """
 
 import math
@@ -61,6 +69,8 @@ class Trajectory:
     """States (position, velocity) at those times, one row per time, shape (n + 1, 2d)."""
     method: str
     step: float
+    stopped: bool = False
+    """True if the run ended early because the position came inside ``stop_radius``."""
 
 
 def rk4_step(f: RightHandSide, t: float, y: Array, h: float) -> Array:
@@ -119,12 +129,14 @@ def integrate(
     step: float,
     n_steps: int,
     method: str = "rk4",
+    stop_radius: float | None = None,
 ) -> Trajectory:
     """Follow d²x/dt² = a(x) for ``n_steps`` steps of length ``step``, starting at t = 0.
 
     ``initial_state`` holds the positions followed by the velocities, for example
-    (x, y, vₓ, v_y). ``method`` is ``"rk4"`` or ``"verlet"``. Invalid arguments are rejected
-    with a ValueError; nothing is adjusted silently.
+    (x, y, vₓ, v_y). ``method`` is ``"rk4"`` or ``"verlet"``. With ``stop_radius`` the run ends
+    at the first step whose position is that close to the origin or closer (see the module
+    notes). Invalid arguments are rejected with a ValueError; nothing is adjusted silently.
     """
     if method not in METHODS:
         raise ValueError(f"Unknown method {method!r}; choose one of {', '.join(METHODS)}")
@@ -135,23 +147,45 @@ def integrate(
             f"The number of steps must be a whole number of at least 1; got {n_steps!r}"
         )
     y0 = validated_state(initial_state)
+    half = len(y0) // 2
+    if stop_radius is not None:
+        if not (math.isfinite(stop_radius) and stop_radius > 0.0):
+            raise ValueError(
+                f"The stop radius must be a positive, finite number; got {stop_radius!r}"
+            )
+        if np.linalg.norm(y0[:half]) <= stop_radius:
+            raise ValueError(
+                f"The run has to start outside the stop radius {stop_radius:g}; "
+                f"it starts at r = {np.linalg.norm(y0[:half]):g}"
+            )
+
+    def inside(state: Array) -> bool:
+        return stop_radius is not None and bool(np.linalg.norm(state[:half]) <= stop_radius)
 
     states = np.empty((n_steps + 1, len(y0)))
     states[0] = y0
+    last = n_steps  # index of the last state computed
+    stopped = False
     if method == "rk4":
         f = first_order_system(acceleration)
         for i in range(n_steps):
             states[i + 1] = rk4_step(f, i * step, states[i], step)
+            if inside(states[i + 1]):
+                last, stopped = i + 1, True
+                break
     else:
-        half = len(y0) // 2
         x, v = y0[:half], y0[half:]
         a = acceleration(x)
         for i in range(n_steps):
             x, v, a = velocity_verlet_step(acceleration, x, v, a, step)
             states[i + 1, :half] = x
             states[i + 1, half:] = v
+            if inside(states[i + 1]):
+                last, stopped = i + 1, True
+                break
 
-    times = np.arange(n_steps + 1) * step
+    times = np.arange(last + 1) * step
+    states = states[: last + 1].copy()
     times.flags.writeable = False
     states.flags.writeable = False
-    return Trajectory(times=times, states=states, method=method, step=step)
+    return Trajectory(times=times, states=states, method=method, step=step, stopped=stopped)

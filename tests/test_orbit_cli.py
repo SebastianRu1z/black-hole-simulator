@@ -46,6 +46,22 @@ def test_free_fall_stops_at_the_requested_radius(capsys):
     assert "stopped at r = 2, t = 33.70 GM/c³" in out
 
 
+def test_a_plunge_stops_at_the_horizon_by_default(capsys):
+    """Without --stop-radius the run used to crash with a traceback when it reached r = 0."""
+    code, out, err = run_cli(capsys, "--x", "10", "--vy", "0", "--duration", "100")
+    assert code == 0 and err == ""
+    assert "stopped at r = 2, t = 33.70 GM/c³" in out
+
+
+def test_reaching_the_singularity_is_reported_without_a_traceback(capsys):
+    code, out, err = run_cli(
+        capsys, "--x", "10", "--vy", "0", "--duration", "100", "--stop-radius", "1e-12"
+    )
+    assert code == 1
+    assert out == ""
+    assert err.startswith("error: The integration failed") and "Traceback" not in err
+
+
 def test_an_unbound_orbit_runs_for_a_given_duration(capsys):
     code, out, _err = run_cli(capsys, "--vy", "0.25", "--duration", "2000")
     assert code == 0
@@ -62,6 +78,8 @@ def test_an_unbound_orbit_runs_for_a_given_duration(capsys):
         (("--mass", "-1"), "mass"),
         (("--stop-radius", "-2"), "radius"),
         (("--vx", "nan"), "finite"),
+        (("--x", "1.5"), "start outside the stop radius"),
+        (("--x", "5", "--stop-radius", "5"), "start outside the stop radius"),
     ],
 )
 def test_invalid_input_is_reported_and_nothing_is_run(capsys, arguments, message):

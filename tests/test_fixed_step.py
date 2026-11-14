@@ -205,3 +205,61 @@ def test_harmonic_oscillator_rk4_loses_energy_while_verlet_keeps_it():
     assert energy["rk4"][-1] == pytest.approx(0.4912, abs=1e-4)
     # Verlet's energy wobbles within 1 % of the start and does not decay.
     assert energy["verlet"].min() > 0.495 - 1e-6 and energy["verlet"].max() <= 0.5 + 1e-12
+
+
+# --- stopping at a radius --------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("method", ["rk4", "verlet"])
+def test_without_a_stop_radius_a_fall_steps_over_r_0_and_gains_energy(method):
+    """The failure that stop_radius exists for: the particle is flung out with E > 0."""
+    run = integrate(acceleration, make_state(10.0, 0.0, 0.0, 0.0), 0.5, 200, method)
+    assert not run.stopped
+    assert specific_energy(run.states[-1]) > 0.0 > specific_energy(run.states[0])
+
+
+@pytest.mark.parametrize("method", ["rk4", "verlet"])
+def test_a_fall_stops_at_the_first_step_inside_the_stop_radius(method):
+    run = integrate(
+        acceleration, make_state(10.0, 0.0, 0.0, 0.0), 0.5, 200, method, stop_radius=2.0
+    )
+    radii = np.hypot(run.states[:, 0], run.states[:, 1])
+    assert run.stopped
+    assert radii[-1] <= 2.0 < radii[-2]  # the last state is the first one inside
+    assert len(run.times) == len(run.states) < 201
+    assert run.times[-1] == pytest.approx(0.5 * (len(run.times) - 1))
+    # Analytic time to fall from r = 10 to r = 2 is 33.70; the stop comes within one step after.
+    assert 33.70 <= run.times[-1] < 33.70 + 0.5 + 1e-9
+    assert specific_energy(run.states[-1]) < 0.0  # no kick: still bound
+    assert not run.states.flags.writeable
+
+
+@pytest.mark.parametrize("method", ["rk4", "verlet"])
+def test_an_orbit_that_stays_outside_the_stop_radius_runs_to_the_end(method):
+    run = integrate(acceleration, circular_orbit(10.0), 0.5, 100, method, stop_radius=2.0)
+    assert not run.stopped
+    assert len(run.times) == 101
+
+
+def test_a_stop_on_the_very_last_step_is_still_reported():
+    full = integrate(acceleration, make_state(10.0, 0.0, 0.0, 0.0), 0.5, 200, stop_radius=2.0)
+    steps_needed = len(full.times) - 1
+    exact = integrate(
+        acceleration, make_state(10.0, 0.0, 0.0, 0.0), 0.5, steps_needed, stop_radius=2.0
+    )
+    assert exact.stopped and len(exact.times) == steps_needed + 1
+
+
+@pytest.mark.parametrize(
+    ("stop_radius", "message"),
+    [
+        (0.0, "positive"),
+        (-2.0, "positive"),
+        (math.nan, "positive"),
+        (math.inf, "positive"),
+        (20.0, "start outside"),
+    ],
+)
+def test_invalid_stop_radius_is_refused(stop_radius, message):
+    with pytest.raises(ValueError, match=message):
+        integrate(acceleration, circular_orbit(10.0), 0.5, 10, stop_radius=stop_radius)
