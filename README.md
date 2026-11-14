@@ -4,11 +4,11 @@ An interactive numerical laboratory for black hole physics, built one validated 
 from Newtonian gravity, through Schwarzschild and Kerr spacetimes, to electrical-engineering
 laboratories on top of them (RF links, signal processing, radio interferometry).
 
-**Status: early development — Stage 1, Checkpoint 1B.**
+**Status: early development — Stage 1, Checkpoint 1D-1.**
 The roadmap, and the verification status of every physics model, are in
 [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md).
 
-![The application window at Checkpoint 1B](docs/images/checkpoint-1b.png)
+![The application window at Checkpoint 1D-1](docs/images/checkpoint-1d1.png)
 
 ## What works today
 
@@ -24,11 +24,16 @@ The roadmap, and the verification status of every physics model, are in
   form. The map looks the same for every mass, because every length of the problem is proportional
   to the mass; only the scale bar changes. It is a map in Schwarzschild coordinates, not what a
   camera would see: the bending of light belongs to a later stage.
-- **Automated tests** for the unit conversions, the number formatting, the separation between
-  physics and interface, the window and the map.
+- **Newtonian orbits** (`bhlab.physics`, `bhlab.solvers`, `python -m bhlab.orbit`): equations of
+  motion, RK4, velocity Verlet and adaptive DOP853 with events, orbital elements, all tested against
+  Kepler's laws and exact solutions.
+- **Particles in the window** (`bhlab.simulation`): enter a position and velocity, press Play, and
+  watch the particles move in real time at an adjustable speed. A particle that reaches r = 2 GM/c² is
+  stopped there: Newton's theory has no horizon, so that is where this model ends.
+- **Automated tests**: 411 of them, for the physics, the solvers, the simulation and the window.
 
-Not there yet: the simulation. There are no particles, no orbits and no relativity in the package so
-far. Those arrive in later checkpoints, each one tested before the next begins.
+Not there yet: placing particles with the mouse, orbit trails, and relativity. Those arrive in later
+checkpoints, each one tested before the next begins.
 
 ## Quick start (Windows)
 

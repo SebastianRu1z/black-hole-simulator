@@ -1,7 +1,7 @@
 # Black Hole Physics Lab — Project Progress
 
-Last updated: 2026-11-13. Checkpoints 1A, 1B and 1C (1C-1 and 1C-2) are approved and merged into `main`.
-Only 1A is pushed; the later merges are local. Checkpoint 1D has been proposed and is not approved.
+Last updated: 2026-11-14. Checkpoints 1A, 1B and 1C are approved and merged into `main` (only 1A is pushed).
+Checkpoint 1D-1 is built on branch `checkpoint-1d`, with the review fixes of 2026-11-14, and awaits approval.
 
 This file is the single source of truth for where the project stands.
 **Read it first in every new session, then inspect the code. Do not rebuild or overwrite existing work.**
@@ -32,11 +32,11 @@ This file is the single source of truth for where the project stands.
 | Item | State |
 |---|---|
 | Current stage | Stage 1 — working interactive simulation foundation (Newtonian) |
-| Last completed checkpoint | **1C-2 — adaptive DOP853 with events, orbital elements, command-line run** (completed 2026-11-12) |
+| Last completed checkpoint | **1D-1 — simulation loop, run controls, particles entered as numbers** (built 2026-11-13, finished 2026-11-14 with the review fixes; awaiting approval) |
 | Last approved checkpoint | **1C-2** (approved by Sebastian on 2026-11-13); with it the whole of 1C. 1A, 1B and 1C-1 approved on 2026-11-12 |
-| Checkpoint in progress | None. 1D has not been started and needs an explicit yes. |
-| Next step | Sebastian decides on the plan for 1D, proposed on 2026-11-13 as two smaller checkpoints: 1D-1 (headless simulation loop with fixed physics ticks, run controls, particles entered as numbers and drawn on the map) and 1D-2 (placing particles with the mouse, selecting and removing them). No 1D code before an explicit yes. Then branch `checkpoint-1d` from `main`. |
-| Automated tests | 286 passed, 0 failed on `main` after merging 1C (pytest 9.2.0, Python 3.14.7, 2026-11-13). `ruff check` and `ruff format --check` clean. |
+| Checkpoint in progress | None. 1D-1 is complete on `checkpoint-1d` and reported; not merged into `main`. |
+| Next step | Sebastian approves 1D-1 (then merge `checkpoint-1d` into `main`) and decides on 1D-2: placing particles with the mouse, selecting and removing them. No 1D-2 code before an explicit yes. |
+| Automated tests | 411 passed, 0 failed on `checkpoint-1d` (pytest 9.2.0, Python 3.14.7, 2026-11-14); 286 on `main`. `ruff check` and `ruff format --check` clean. |
 | Git | 1A (commit `ccea74b`) is merged into `main`. Each later checkpoint is built on its own branch and merged after approval. 1B (`7e9526b`, `e51d367` by Sebastian, and the completing commit) was merged into `main` locally on 2026-11-12 after Sebastian's approval. Branch `checkpoint-1c` was created from `main` (at `50b8baa`) after Sebastian approved starting 1C-1. 1C-1 and 1C-2 were committed there and, after Sebastian approved 1C-2 on 2026-11-13, merged into `main` locally. |
 | GitHub | Remote `origin` is `SebastianRu1z/black-hole-simulator`, created by Sebastian. On 2026-11-12 Sebastian asked for the approved 1A work to be pushed to it; `main` was pushed at commit `d903597`. Push `main` only when Sebastian asks; never push an unapproved checkpoint. Visibility not checked. On 2026-11-12 Sebastian also published `checkpoint-1b` himself, at `e51d367`. The approved 1B work on `main` and the completing commit on `checkpoint-1b` are not pushed: push only when Sebastian asks. |
 
@@ -53,7 +53,15 @@ This file is the single source of truth for where the project stands.
 | `bhlab.ui.viewport`, `bhlab.ui.scale_bar`, `bhlab.ui.view_options` (1B) | pyqtgraph map of the orbital plane in units of r_g: horizon disc, photon-sphere and ISCO circles with labels that hide when zoomed out, grid, drag to pan, wheel zoom about the cursor, zoom buttons, reset, zoom and pan limits, scale bar in r_g and in km, AU or light-years, cursor readout (x, y, r, φ) in the status bar, check boxes for the circles and the grid. The scales table sits in a right-hand panel |
 | `python -m bhlab` | opens the window |
 
-There is no simulation yet: no particles and no dynamics. The map shows the reference radii and nothing else.
+### Checkpoint 1D-1 (on `checkpoint-1d`, awaiting approval)
+
+| Module | What it does |
+|---|---|
+| `bhlab.solvers.adaptive.AdaptiveStepper` | DOP853 one step at a time, with the state anywhere inside the latest step from its dense output |
+| `bhlab.simulation.model` | `Simulation`: one simulated clock, one solver per particle (least advanced stepped first), particles refused at r ≤ 2 or speed ≥ c, stopped exactly where they reach r = 2 (including a dip inside between two steps), reset |
+| `bhlab.ui.simulation_runner` | real time → simulated time (speed × Δt), 16 ms timer, 0.1 s cap on a gap, 8 ms compute budget per frame and a "cannot keep up" notice |
+| `bhlab.ui.run_controls`, `bhlab.ui.particle_form` | Play/Pause, Step, Reset, speed slider (1 to 100 000 GM/c³ per second, 1-2-5 steps) with the physical meaning for the mass; form for x, y, vₓ, v_y with a "Circular speed" button and a summary of moving and stopped particles |
+| `bhlab.ui.viewport` (extended) | draws particles: dots while moving, a cross when stopped |
 
 ### Prototypes (`prototypes/`, unchanged since 2026-11-11, not part of the tested package)
 
@@ -111,7 +119,10 @@ src/bhlab/
         viewport.py        the 2D map: reference circles, camera, overlays
         scale_bar.py       scale bar and its 1-2-5 rounding
         scales_panel.py    table of characteristic scales
-tests/                 286 tests: constants, units, formatting, architecture, interface, map, physics, solvers, CLI
+    simulation/
+        model.py           Simulation: clock, particles, stop at r = 2 (1D-1)
+    ui/ (1D-1 additions)   simulation_runner.py, run_controls.py, particle_form.py
+tests/                 411 tests: constants, units, formatting, architecture, interface, map, physics, solvers, CLI, simulation
 examples/              integrator_comparison.py: RK4, Verlet and DOP853 compared (1C-1, 1C-2)
 docs/images/           screenshots of each checkpoint; the README shows the latest
 prototypes/            the original scripts, unchanged
@@ -156,7 +167,7 @@ the verification matrix below (§36), and references that are checked before the
 | 1A | Project skeleton, units module, application window | package `bhlab`, tested constants/units/formatting modules, PySide6 window showing live characteristic scales for a chosen mass, pytest and ruff wired up | **approved 2026-11-12** |
 | 1B | 2D black hole view and camera | pyqtgraph viewport: horizon disc, photon-sphere and ISCO circles (labelled as GR reference radii the Newtonian engine does not use), scale bar, pan/zoom/reset, cursor readout; the scales table moves to a side panel | **approved 2026-11-12** |
 | 1C | Newtonian physics engine (headless) | test-particle equations of motion about a point mass; velocity Verlet, RK4, SciPy DOP853 with event detection; orbital elements; pytest checks against Kepler; command-line run | split on 2026-11-12. **1C-1** (equations of motion, RK4, velocity Verlet, Kepler and convergence tests): **approved 2026-11-12**. **1C-2** (DOP853 with events, orbital elements, command-line run): **approved 2026-11-13** |
-| 1D | Particle placement and run controls | click-and-drag placement with a velocity vector, exact numeric inputs, rejection of invalid initial conditions, multiple particles, play/pause/reset/single-step/speed with physics decoupled from frame rate | not started |
+| 1D | Particle placement and run controls | click-and-drag placement with a velocity vector, exact numeric inputs, rejection of invalid initial conditions, multiple particles, play/pause/reset/single-step/speed with physics decoupled from frame rate | split: **1D-1** (simulation loop, run controls, numeric input): built, awaiting approval. **1D-2** (mouse placement, selection, removal): not started |
 | 1E | Trails and live measurements | orbital trails, predicted path, selected-object panel (r, v, E, L, e, a, T, periapsis, apoapsis, status), unit switching, warning where the Newtonian model stops being trustworthy | not started |
 | 1F | Validation dashboard, plots, export, Stage 1 docs | conservation-error plots, solver comparison and convergence study, CSV/JSON/PNG export, Newtonian parts of README/PHYSICS/NUMERICAL_METHODS/VALIDATION | not started |
 
@@ -238,6 +249,30 @@ Decisions the plan did not spell out:
   first failed only one test, because every hand-worked state sat at periapsis or apoapsis, where r·v = 0.
   A test from a state in the middle of the orbit was added.
 
+### Checkpoint 1D-1: how it was built
+
+The code was written on 2026-11-13 in a session that left it uncommitted and unrecorded. On 2026-11-14
+Sebastian confirmed he had approved 1D-1; it was committed unchanged (`d34cd86`), reviewed (see "Review of
+2026-11-14"), and finished: the capture fixes, the screenshot `docs/images/checkpoint-1d1.png`, the README
+and `LEARNING_NOTES.md`. Seen working in the real window off screen: four particles, the plunging one
+stopped on the horizon.
+
+### Review of 2026-11-14 (thermos and improve, on Checkpoint 1C; report only)
+
+Run on the committed 1C code (`50b8baa..085276f`). Findings and decisions:
+
+| # | Finding | Decision |
+|---|---|---|
+| I1 | A plunge without `--stop-radius` crashed the command line with a traceback; `integrate_adaptive` raised an unexplained `RuntimeError` at r → 0 | **fixed** (`b18933a`): `IntegrationError`, horizon default, start inside refused, exit code 1 |
+| I2 | Fixed-step integrators step over r = 0 and fling the particle out (E from −0.1 to +4.96) without warning | **fixed** (`b18933a`): optional `stop_radius`, `Trajectory.stopped` |
+| I3 | No test covered a plunge without a stop | **fixed**: 21 tests; the 16 for new behaviour fail on the old code |
+| T1 | Planar orbit events (`periapsis`, `apoapsis`, `radius_reached`) live in the generic solver module | **planned**: small cleanup checkpoint before Stage 2, moving them to `physics/` |
+| T3 | `adaptive.py` imports shared plumbing (`first_order_system`, `validated_state`, types) from `fixed_step.py` | **planned**: same cleanup, into a shared solver module |
+| T2 | `orbit._run` computes and prints in one function | when 1E/1F need the same numbers |
+| T4, T5, I4 | duplicated `_require_positive_finite` and inline checks; string-typed `kind`/`method`; `integrate` refuses NumPy integers | in passing, when those files are edited |
+
+No security findings. Not audited: interface code, performance, dependencies, docs.
+
 ## Verification matrix
 
 | Physics model | Where | Equations implemented | Automated tests | Analytic benchmarks | Convergence evidence | Limitations documented |
@@ -248,14 +283,17 @@ Decisions the plan did not spell out:
 | Newtonian point-mass dynamics: equations of motion and the RK4 and velocity Verlet integrators | `bhlab.physics.newtonian`, `bhlab.solvers.fixed_step` (1C-1) | yes (d²r/dt² = −r/r³; E = v²/2 − 1/r; L = x v_y − y vₓ; RK4; velocity Verlet) | 52 pytest tests (21 physics, 31 solvers) | by hand: a, E, L at sample points; circular speed √(1/r), E = −1/(2r), L = √r; T = 2π a^(3/2) agrees with the SI form of Kepler's law; RK4 exact on a cubic and equal to the Taylor series of e^h; Verlet exact for constant acceleration; orbits close after one Kepler period (RK4 to 1e-8 a for a = 25, 100, 400); periapsis 50 and apoapsis 150 for a = 100, e = 0.5 | measured orders 4.06 (RK4) and 2.00 (Verlet) from halving the step; over 40 orbits the RK4 energy error grows 15-fold while Verlet's stays bounded; Verlet conserves L to 1e-12; harmonic oscillator: RK4 energy decays monotonically, Verlet's stays within 1 % | yes (module docstrings; Newtonian model not valid near the black hole). Fixed steps only: adaptive steps and events come in 1C-2 |
 | Newtonian orbital elements | `bhlab.physics.orbital_elements` (1C-2) | yes (eccentricity vector, a = −1/(2E), r_p = L²/(1 + e), r_a = a(1 + e), T = 2π a^(3/2)) | 14 pytest tests | by hand: circle; ellipse from periapsis, from apoapsis and from a mid-orbit state (E = π/2); rotated orbits; clockwise motion; hyperbola (a = −100, e = 1.5); exact parabola (E = 0); fall from rest (e = 1, a = r₀/2) | elements constant along a DOP853 run to 1e-8 over three orbits | yes (module docstring) |
 | Adaptive integration (DOP853) and events | `bhlab.solvers.adaptive` (1C-2) | SciPy `solve_ivp` with DOP853; events as zero crossings of r·v and r − R | 27 pytest tests, plus 12 for the command line | periapsis and apoapsis at k·T and (k + ½)·T to 1e-8; crossing of r = 100 at 1070.80 from Kepler's equation to 1e-9; free fall from r = 10 stops at r = 2 at the analytic 33.70 to 1e-9; custom event at T/4 on a circle | end error falls monotonically as rtol tightens (1.5e-4 to 1.7e-9 for rtol 1e-6 to 1e-12); at e = 0.9 an end error of 1.1e-6 with 1334 evaluations, against about 0.03 for RK4 with 10 000 | yes (module docstring; not symplectic; tolerance is per step) |
+| Plunge handling: stop at a radius, failure at r = 0 | `solvers.adaptive`, `solvers.fixed_step`, `orbit` (review fix) | stop radius r = 2; `IntegrationError` | 21 pytest tests | fall from rest at r = 10 stops at the analytic 33.70 (adaptive, to 1e-9; fixed step, within one step); failure at the analytic time to the centre, (π/2)√(r₀³/2) = 35.12, to 1e-3 | not applicable | yes (module docstrings, learning notes 2.15) |
+| Simulation clock and real-time playback | `simulation.model`, `ui.simulation_runner` (1D-1) | one clock, least-advanced stepping, dense output, speed × Δt | 42 simulation, 14 stepper, 39 interface tests | positions after the same simulated time agree at any frame rate; free fall stops at r = 2 at 33.70; a circular orbit returns after one Kepler period | not applicable | yes (module docstrings) |
 | Schwarzschild timelike geodesics | prototype script | yes | script self-test, 6 checks (not pytest) | circular-orbit period (0.01 %), weak-field precession (within 2 %), capture inside ISCO | none | partly, in docstring |
 | Schwarzschild null geodesics and thin-disc image | prototype script | yes | none | none (visual check only) | none | partly, in docstring |
 | Kerr, RF link, DSP, interferometry, curved-spacetime EM, research extensions | not started | — | — | — | — | — |
 
 No model in this project may be described as validated or research-grade until its row is filled in.
 
-Test suite breakdown (2026-11-12): constants 6, units 40, formatting 41, architecture 1, interface 38, map 55,
-Newtonian physics 21, fixed-step solvers 31, orbital elements 14, adaptive solver 27, command line 12. Total 286.
+Test suite breakdown (2026-11-14, `checkpoint-1d`): constants 6, units 40, formatting 41, architecture 1, interface 38,
+map 62, Newtonian physics 26, fixed-step solvers 43, orbital elements 14, adaptive solver 29, stepper 14, command
+line 16, simulation 42, simulation interface 39. Total 411.
 
 ## Known issues and limitations
 
@@ -302,6 +340,10 @@ Checkpoint 1C-2:
 - Still Newtonian: no horizon, and the radius event at r = 2 is a geometric stop, not the physics of a
   horizon.
 
+Checkpoint 1D-1:
+- Particles leave no trail yet (1E), so one that leaves the view is simply gone from sight.
+- Only seen off screen at one size and scaling; Sebastian has not yet judged it on his own screen.
+
 Prototypes:
 - Renderer: background stars appear as short tangential dashes. Probable cause, reasoned but not yet
   tested: each star is one texel (about 0.18° wide) of a background map, so it behaves as an extended
@@ -310,7 +352,7 @@ Prototypes:
 - Renderer needs 70–90 s for 960 × 540 (pure NumPy).
 - The sandbox window has never been driven interactively by a test.
 
-## Review skills (inspected 2026-11-12; none installed; installing them awaits Sebastian's approval)
+## Review skills (inspected 2026-11-12; none installed; used once on 2026-11-14 by reading their files)
 
 Both are plain Markdown instructions: no scripts, no hooks, no packages to install.
 
@@ -318,6 +360,9 @@ Both are plain Markdown instructions: no scripts, no hooks, no packages to insta
 |---|---|---|---|
 | `improve` | `shadcn/improve` at commit `cac56e1` (2026-09-12): `SKILL.md` and three reference files, MIT | Read-only audit in nine categories (bugs, security, performance, tests, tech debt, dependencies, tooling, docs, direction). Returns a ranked findings table, then writes a plan file into `plans/` for each finding chosen | Suits Python. Has no physics or numerics category: give it those as focus hints. Use its `quick` level, because the repository is small. `execute` (another model edits code in a git worktree) and `--issues` (publishes plans on GitHub) need explicit approval each time. Its documented installer, `npx skills add`, needs Node.js and runs third-party code: copy the four files instead |
 | `thermo-nuclear-code-quality-review` | `cursor/plugins`, folder `thermos`, last changed in commit `dc41543` (2026-05-28): one `SKILL.md`, MIT | A strict maintainability rubric for a branch's diff: needless abstraction, tangled branching, files over 1 000 lines, logic in the wrong layer | Written for Cursor, mostly with TypeScript in mind. Its file format is the one Claude Code skills use, so it should load once copied by hand (not yet tried). Little to find while the largest file has 325 lines. Its prompt tells the reviewer to restructure code: here it only reports |
+
+On 2026-11-14 Sebastian asked for both to be run with `npx skills use`. Node.js is not installed, so the two
+repositories were cloned into a temporary folder and their `SKILL.md` files followed by hand, report only.
 
 Claude Code's own `/code-review`, `/security-review` and `/simplify` are available without installing anything.
 
@@ -366,6 +411,9 @@ Claude Code's own `/code-review`, `/security-review` and `/simplify` are availab
 - 2026-11-12 — Sebastian approved starting Checkpoint 1C-2. Built on `checkpoint-1c` with Opus High.
 - 2026-11-13 — Sebastian approved Checkpoint 1C-2. 1C-2 was committed and `checkpoint-1c` merged into `main`
   locally, not pushed. The understanding-check questions were not answered.
+- 2026-11-14 — Sebastian asked for the thermos and improve reviews, then said "do recommended": fix I1–I3
+  within 1D and plan the T1/T3 cleanup before Stage 2. He confirmed he had approved 1D-1, whose code a
+  2026-11-13 session had left uncommitted and unrecorded. Session model: Opus 5.5.
 
 ## How to resume in a new session
 

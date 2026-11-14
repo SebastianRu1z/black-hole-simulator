@@ -4,10 +4,10 @@ A growing technical reference for understanding this project: the physics, the m
 Python and the engineering ideas behind the code. It is organised by topic, not by date. Each
 entry names the checkpoint that introduced it, and every new checkpoint adds to the sections below.
 
-Last updated: 2026-11-12, Checkpoint 1C-2. Covered so far: 1A (units, constants, the window), 1B (the
-2D map), 1C-1 (equations of motion, RK4, velocity Verlet) and 1C-2 (adaptive DOP853, events, orbital
-elements, the `python -m bhlab.orbit` command). Orbits are computed and tested, but not yet shown in
-the window; that is Checkpoint 1D.
+Last updated: 2026-11-14, Checkpoint 1D-1. Covered so far: 1A (units, constants, the window), 1B (the
+2D map), 1C-1 (equations of motion, RK4, velocity Verlet), 1C-2 (adaptive DOP853, events, orbital
+elements, the `python -m bhlab.orbit` command) and 1D-1 (particles moving in the window: one simulated
+clock, real-time playback, stopping at the horizon). Placing particles with the mouse is 1D-2.
 
 File paths in this document are relative to `src/bhlab/` unless they start with `tests/`.
 
@@ -308,6 +308,44 @@ t = 1000·(π/2 − 0.5) = 1070.80 GM/c³. The program's event: 1070.80, agreein
 From r₀ = 10 to r = 2: cos²η = 0.2, η = 1.107, t = 33.70 GM/c³, which is 1.66 ms for 10 M☉. The program
 stops at 33.70, agreeing to 4 × 10⁻¹².
 
+The same formula with η = π/2 (r = 0) gives the time to fall all the way to the centre:
+t = (π/2)·√(r₀³/2), which is 35.12 GM/c³ from r₀ = 10. That is exactly where the solver gives up when
+nothing stops it first (section 2.15).
+
+### 2.14 Dense output: the state between two steps (1D-1)
+
+DOP853 does not only produce the state at the end of each step. From the slope evaluations it has
+already made it builds a polynomial in t that follows the solution through the whole step, about as
+accurately as the steps themselves. SciPy calls this *dense output*; `AdaptiveStepper.state_at(t)` in
+`solvers/adaptive.py` evaluates it.
+
+This is what lets the display ask for the state at any moment without changing the physics. The
+solver takes the steps the motion needs; the window samples the polynomial at whatever times its
+frames happen to fall. Sampling more or less often changes nothing about the steps, so the positions
+at a given simulated time are identical at 30 or 144 frames per second. A test checks exactly this
+(`test_the_frame_rate_does_not_change_where_the_particle_is`).
+
+In `simulation/model.py` every particle has its own solver, each ahead of the shared clock by part
+of a step. `Simulation.advance` always steps the particle that is *least* advanced. Then the clock
+time always lies inside every particle's latest step, where its polynomial is valid.
+
+### 2.15 What a solver does at a singularity (review fix, 2026-11-14)
+
+At r = 0 the acceleration −r/r³ is infinite. An adaptive solver shrinks its step to keep the error
+small, and near r = 0 the steps shrink without limit until they are smaller than the spacing between
+floating-point numbers around t. SciPy then stops with "Required step size is less than spacing
+between numbers". The code now raises `IntegrationError` with that explanation instead of an
+unexplained `RuntimeError`.
+
+A fixed-step integrator cannot shrink its step. It steps *over* r = 0, lands where the force is huge
+but finite, and the particle is flung out with far more energy than it had. Falling from rest at
+r = 10 with h = 0.5, Verlet ends with E = +4.96 instead of −0.1. `integrate(..., stop_radius=2.0)` now
+ends the run at the first step inside r = 2 (`Trajectory.stopped` is then True).
+
+Newton's theory has no horizon, so the stop at r = 2 is not physics: it marks where this model is
+declared to end. The simulation, the command line and (on request) the fixed-step integrators all use
+the same rule.
+
 ## 3. Python
 
 ### 3.1 How the project is laid out (1A)
@@ -492,6 +530,28 @@ and its help text, and `--help` is generated from them. Other points:
   program switches its output to UTF-8 when it starts. A test runs it as a separate process with
   piped output to catch this.
 
+### 3.13 Two clocks and a timer: real-time playback (1D-1)
+
+`ui/simulation_runner.py` connects real time to simulated time. A `QTimer` fires about every 16 ms.
+On each tick the runner reads a monotonic clock (`time.perf_counter`, which never jumps when the
+computer's wall clock is corrected), measures the real time Δt since the last tick, and advances the
+simulation by speed × Δt. Two guards keep the window usable:
+- a gap longer than 0.1 s (the window was frozen) counts as 0.1 s, so the simulation never leaps;
+- at most 8 ms of each frame is spent computing. `advance(..., keep_going=...)` asks after every
+  solver step whether there is time left, and the speed readout says when it cannot keep up.
+
+The tests replace the real clock with a `FakeClock` (`tests/helpers.py`) that they move forward by
+hand. Passing the clock in as an argument, instead of calling `time.perf_counter` directly, is what
+makes timing code testable: this is called *dependency injection*.
+
+### 3.14 Exceptions with a family tree (review fix)
+
+`class IntegrationError(RuntimeError)` makes a new kind of error that *is* a RuntimeError.
+`except IntegrationError` catches only solver failures, while older code written as
+`except RuntimeError` still catches them too. The command line uses this to give the two kinds of
+failure different exit codes: 2 for invalid input (`ValueError`) and 1 for a run the solver could
+not finish.
+
 ## 4. Key functions
 
 | Function | File | Takes | Gives |
@@ -516,7 +576,11 @@ and its help text, and `--help` is generated from them. Other points:
 | `orbital_elements` | `physics/orbital_elements.py` | a state | kind, E, L, e, a, periapsis, apoapsis, period, periapsis angle |
 | `integrate_adaptive` | `solvers/adaptive.py` | force law, start state, duration, rtol, atol, events | an `AdaptiveTrajectory` with steps, events and why it stopped |
 | `periapsis`, `apoapsis`, `radius_reached` | `solvers/adaptive.py` | (a radius, a direction, whether to stop) | an `EventSpec` to watch for |
-| `main` | `orbit.py` | command-line arguments | prints the orbit and its events; returns 0 or 2 |
+| `main` | `orbit.py` | command-line arguments | prints the orbit and its events; returns 0, 1 (solver failed) or 2 (invalid input) |
+| `AdaptiveStepper.step`, `.state_at` | `solvers/adaptive.py` | nothing; a time inside the latest step | one DOP853 step; the interpolated state |
+| `Simulation.add_particle` | `simulation/model.py` | x, y, vₓ, v_y | a `Particle`; refuses r ≤ 2 and speeds ≥ c |
+| `Simulation.advance` | `simulation/model.py` | duration, optional `keep_going` | moves the clock and every particle; True if it covered the whole duration |
+| `SimulationRunner.tick` | `ui/simulation_runner.py` | nothing (reads the clock) | advances by speed × real time, within the frame budget |
 
 `format_length_auto` without its docstring, as an example of a rule written as code:
 
@@ -569,6 +633,11 @@ Only connections that are real are listed here.
   signal (here r·v) is watched for a crossing of zero in a chosen direction, the rising or falling
   edge, and the crossing time is then located far more finely than the sampling interval, as a
   digital oscilloscope interpolates between samples.
+- **Real-time systems (1D-1).** The runner is a soft real-time loop: a fixed frame period, a compute
+  budget per frame, and graceful degradation (time runs slower) instead of a missed deadline freezing
+  everything. Embedded control loops and audio buffers are designed around the same budget.
+- **Interpolation between samples (1D-1).** Dense output is reconstruction between samples, like a
+  DAC's reconstruction filter: the solver's steps are the samples, the polynomial fills in between.
 - **Not built yet.** Time dilation as a frequency shift, signal paths along light rays, spectra and
   link budgets come in Stages 3 and 5.
 
@@ -621,7 +690,7 @@ Predict first, then start the program with `.venv\Scripts\python.exe -m bhlab` a
 
 13. Run `.venv\Scripts\python.exe -m bhlab.orbit --orbits 3`. Prediction: apoapsis at 3142, 9425 and
     15708 GM/c³, that is (k + ½)·T. Then add `--mass 4.3e6` and check that the period reads 1.540 d.
-14. Fall from rest: `--x 10 --vy 0 --stop-radius 2`. Prediction: it stops at t = 33.70 GM/c³ (section
+14. Fall from rest: `--x 10 --vy 0 --duration 100` (the stop radius is 2 by default since the review fix). Prediction: it stops at t = 33.70 GM/c³ (section
     2.13). Repeat with `--stop-radius 1` and work out the new time by hand first.
 15. Escape: `--vy 0.25 --duration 2000`. Prediction: "unbound", e = 2.125, period ∞. Without
     `--duration` the program refuses to run; read its message and explain why.
@@ -629,15 +698,20 @@ Predict first, then start the program with `.venv\Scripts\python.exe -m bhlab` a
     error. The event times change only slightly; compare them with (k + ½)·T.
 17. In `examples\integrator_comparison.py` set `ECCENTRICITY = 0.9` and compare the "evaluations" of
     DOP853 with the 4 per step of RK4 at a similar end error.
+18. In the window, add a particle at x = 10, y = 0, vₓ = 0, v_y = 0 and press Play. Prediction: it stops
+    on the horizon after t = 33.70 GM/c³, and the summary counts it as stopped.
+19. Add a circular orbit at r = 10 (the "Circular speed" button fills it in), set the speed to
+    100 GM/c³ per second and time one orbit with a watch. Prediction: T = 2π·10^1.5 = 198.7 GM/c³,
+    about 2 seconds on screen.
+20. `python -m bhlab.orbit --x 10 --vy 0 --duration 100 --stop-radius 1e-12`. Prediction: an error
+    saying the solver failed at t ≈ 35.12, the time to reach the centre (section 2.13), and exit code 1.
 
 ## 7. To study next
 
-Before Checkpoint 1D (placing particles and running them in the window):
+Before Checkpoint 1D-2 (placing particles with the mouse):
 
-- Qt timers and the animation loop: redrawing the screen at a steady rate while time passes.
-- Why the physics time step must not depend on the frame rate, and how to step a simulation by a
-  fixed amount of simulated time per frame.
 - Mouse events in pyqtgraph: turning a click and drag into a position and a velocity.
+- Hit testing: deciding which drawn particle a click belongs to, so it can be selected or removed.
 
 Further ahead, for Stage 2: the idea of a metric, proper time against coordinate time, and the
 effective potential of an orbit.
