@@ -10,8 +10,10 @@ the black hole's shadow look about 2.6 times larger than its horizon, belongs to
 """
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
 
+import numpy as np
 import pyqtgraph as pg
 from PySide6.QtCore import QEvent, QPointF, Qt, Signal
 from PySide6.QtGui import QFont, QFontMetricsF
@@ -29,6 +31,9 @@ from bhlab.ui.theme import BACKGROUND, BLUE, BORDER, MUTED, ORANGE, PURPLE
 from bhlab.units import HORIZON_RADIUS_RG, ISCO_RADIUS_RG, PHOTON_SPHERE_RADIUS_RG, BlackHole
 
 _HORIZON_LABEL_WIDTH = 88.0  # pixels; the label is centred inside the disc
+
+_PARTICLE_SIZE = 10  # pixels across a particle's dot
+_STOPPED_SIZE = 12  # pixels across the cross that marks a stopped particle
 
 # The longest label the y axis can show. Within the zoom and pan limits of this view, pyqtgraph
 # never prints more than a sign, six digits and a decimal point (tests/test_viewport.py checks).
@@ -174,6 +179,9 @@ class BlackHoleView(QWidget):
         for side, text in (("bottom", "x"), ("left", "y")):
             axis = self.plot_item.getAxis(side)
             axis.enableAutoSIPrefix(False)
+            # pyqtgraph draws the grid as part of the axes and, by default, on top of the map.
+            # Put the axes underneath, so that grid lines never cross a particle or the horizon.
+            axis.setZValue(self.view_box.zValue() - 1.0)
             axis.setPen(pg.mkPen(BORDER))
             axis.setTextPen(pg.mkPen(MUTED))
             axis.setTickFont(tick_font)
@@ -192,6 +200,13 @@ class BlackHoleView(QWidget):
         self._labels: dict[str, pg.TextItem] = {}
         for circle in REFERENCE_CIRCLES:
             self._add_reference_circle(circle)
+
+        # Particles: dots of a fixed size on screen, drawn above everything else on the map.
+        self._particle_points: tuple[tuple[float, float], ...] = ()
+        self._particle_stopped: tuple[bool, ...] = ()
+        self._particles = pg.ScatterPlotItem(pxMode=True)
+        self._particles.setZValue(20)
+        self.plot_item.addItem(self._particles, ignoreBounds=True)
 
         self.scale_bar = ScaleBar(self.plot)
 
@@ -274,6 +289,47 @@ class BlackHoleView(QWidget):
     def grid_visible(self) -> bool:
         """Whether the coordinate grid is switched on."""
         return self._grid_visible
+
+    def set_particles(
+        self,
+        positions: Sequence[tuple[float, float]],
+        colours: Sequence[str],
+        stopped: Sequence[bool],
+    ) -> None:
+        """Draw one mark per particle at ``positions``, in units of r_g.
+
+        A moving particle is a dot in its colour; a stopped one is a cross in the same colour,
+        so that its state does not depend on colour alone. Each dot has a thin ring in the
+        background colour, which keeps overlapping particles apart.
+        """
+        if not (len(positions) == len(colours) == len(stopped)):
+            raise ValueError("positions, colours and stopped must have one entry per particle")
+        self._particle_points = tuple((float(x), float(y)) for x, y in positions)
+        self._particle_stopped = tuple(bool(flag) for flag in stopped)
+        if not self._particle_points:
+            self._particles.clear()
+            return
+        ring = pg.mkPen(BACKGROUND, width=2)
+        self._particles.setData(
+            pos=np.array(self._particle_points),
+            symbol=["x" if flag else "o" for flag in self._particle_stopped],
+            size=[_STOPPED_SIZE if flag else _PARTICLE_SIZE for flag in self._particle_stopped],
+            brush=[pg.mkBrush(colour) for colour in colours],
+            # The ring in the background colour would thin a cross out, so a cross is outlined
+            # in its own colour.
+            pen=[
+                pg.mkPen(colour, width=2) if flag else ring
+                for colour, flag in zip(colours, self._particle_stopped, strict=True)
+            ],
+        )
+
+    def particle_points(self) -> tuple[tuple[float, float], ...]:
+        """The map positions of the particles drawn, in units of r_g."""
+        return self._particle_points
+
+    def particle_stopped(self) -> tuple[bool, ...]:
+        """For each particle drawn, whether it is drawn as stopped."""
+        return self._particle_stopped
 
     # --- internals ----------------------------------------------------------------------
 

@@ -9,6 +9,7 @@ from bhlab.constants import GM_SUN, C
 from bhlab.physics.newtonian import (
     acceleration,
     circular_orbit,
+    circular_velocity,
     kepler_period,
     make_state,
     specific_angular_momentum,
@@ -76,6 +77,25 @@ def test_circular_orbit_balances_gravity_and_centripetal_acceleration(radius):
 def test_circular_orbit_at_100_rg_by_hand():
     state = circular_orbit(100.0)
     assert state == pytest.approx([100.0, 0.0, 0.0, 0.1], rel=1e-15)  # v = √(1/100) = 0.1 c
+
+
+@pytest.mark.parametrize(("x", "y"), [(10.0, 0.0), (0.0, 20.0), (-3.0, 4.0), (6.0, -8.0)])
+def test_circular_velocity_is_perpendicular_anticlockwise_and_of_circular_speed(x, y):
+    vx, vy = circular_velocity(x, y)
+    radius = math.hypot(x, y)
+    assert math.hypot(vx, vy) == pytest.approx(math.sqrt(1.0 / radius), rel=1e-15)
+    assert x * vx + y * vy == pytest.approx(0.0, abs=1e-15)  # perpendicular to the position
+    assert x * vy - y * vx > 0.0  # angular momentum is positive: anticlockwise
+
+
+def test_circular_velocity_by_hand():
+    # At (0, 25): speed √(1/25) = 0.2, pointing along −x.
+    assert circular_velocity(0.0, 25.0) == pytest.approx((-0.2, 0.0), rel=1e-15, abs=1e-17)
+    vx, vy = circular_velocity(100.0, 0.0)
+    assert vy == pytest.approx(0.1, rel=1e-15)
+    assert vx == 0.0 and math.copysign(1.0, vx) == 1.0  # a plain zero, never −0.0
+    with pytest.raises(ValueError):
+        circular_velocity(0.0, 0.0)
 
 
 @pytest.mark.parametrize("radius", [0.0, -1.0, math.nan, math.inf])

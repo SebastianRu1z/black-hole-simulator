@@ -90,13 +90,22 @@ def specific_angular_momentum(state: State) -> float:
     return x * vy - y * vx
 
 
-def circular_orbit(radius: float) -> State:
-    """The state that starts an anticlockwise circular orbit of ``radius`` on the +x axis.
+def circular_velocity(x: float, y: float) -> tuple[float, float]:
+    """The velocity (vₓ, v_y) of the anticlockwise circular orbit through the point (x, y).
 
-    Gravity supplies the centripetal acceleration: v²/r = 1/r², so v = √(1/r).
+    Gravity supplies the centripetal acceleration: v²/r = 1/r², so v = √(1/r). The velocity is
+    perpendicular to the position, a quarter turn anticlockwise from it.
     """
+    r = _radius(x, y)
+    speed = math.sqrt(1.0 / r)
+    # Adding 0.0 turns a negative zero (−0.0, as for a point on the +x axis) into +0.0.
+    return -speed * (y / r) + 0.0, speed * (x / r) + 0.0
+
+
+def circular_orbit(radius: float) -> State:
+    """The state that starts an anticlockwise circular orbit of ``radius`` on the +x axis."""
     _require_positive_finite(radius, "The orbital radius")
-    return make_state(radius, 0.0, 0.0, math.sqrt(1.0 / radius))
+    return make_state(radius, 0.0, *circular_velocity(radius, 0.0))
 
 
 def kepler_period(semi_major_axis: float) -> float:

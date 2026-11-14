@@ -89,9 +89,33 @@ def test_window_has_the_map_in_the_centre_and_a_panel_on_each_side(window):
     right = window.findChild(QDockWidget, "scalesDock")
     assert window.dockWidgetArea(left) == Qt.DockWidgetArea.LeftDockWidgetArea
     assert window.dockWidgetArea(right) == Qt.DockWidgetArea.RightDockWidgetArea
-    assert left.isAncestorOf(window.controls) and left.isAncestorOf(window.view_options)
-    assert right.isAncestorOf(window.scales)
+    # Left: what the user sets up. Right: reference information and what the map shows.
+    assert left.isAncestorOf(window.controls) and left.isAncestorOf(window.particle_form)
+    assert right.isAncestorOf(window.scales) and right.isAncestorOf(window.view_options)
     assert window.scales.isVisible() and window.view.isVisible()
+
+
+def test_run_controls_sit_under_the_map_and_nowhere_else(window):
+    bar = window.findChild(QDockWidget, "runDock")
+    assert window.dockWidgetArea(bar) == Qt.DockWidgetArea.BottomDockWidgetArea
+    assert bar.isAncestorOf(window.run_controls) and window.run_controls.isVisible()
+    # As wide as the map: the side panels keep the full height of the window.
+    assert bar.width() == window.view.width()
+    assert bar.geometry().top() >= window.view.geometry().bottom()
+
+
+@pytest.mark.parametrize("size", [(1250, 640), (1440, 800)])
+def test_side_panels_scroll_when_the_window_is_short_and_never_squash_their_text(
+    window, qapp, size
+):
+    window.resize(*size)
+    qapp.processEvents()
+    for name in ("controlDock", "scalesDock"):
+        scroll = window.findChild(QDockWidget, name).widget()
+        panel = scroll.widget()
+        needed = panel.layout().totalHeightForWidth(panel.width())
+        assert panel.height() >= needed  # every section has the height its text needs
+        assert scroll.verticalScrollBar().maximum() == max(0, needed - scroll.viewport().height())
 
 
 def test_default_view_is_centred_on_the_black_hole_and_shows_every_reference_radius(window):
@@ -433,6 +457,63 @@ def test_labels_disappear_as_the_view_is_zoomed_out(window):
     assert seen_all_hidden
     view.reset_view()
     assert all(view.label_visible(circle.key) for circle in REFERENCE_CIRCLES)
+
+
+# --- particles on the map --------------------------------------------------------------------
+
+
+def colour_at(view, x, y):
+    """The colour of the screen pixel that shows the map position (x, y), as #rrggbb."""
+    image = view.plot.grab().toImage()
+    ratio = image.devicePixelRatio()
+    pixel = pixel_of(view, x, y)
+    return image.pixelColor(round(pixel.x() * ratio), round(pixel.y() * ratio)).name()
+
+
+def test_particles_are_drawn_where_they_are_in_their_colours(window, qapp):
+    view = window.view
+    view.set_particles([(4.0, 3.0), (-5.0, -4.0)], ["#199e70", "#d95926"], [False, True])
+    qapp.processEvents()
+    assert view.particle_points() == ((4.0, 3.0), (-5.0, -4.0))
+    assert view.particle_stopped() == (False, True)
+    assert colour_at(view, 4.0, 3.0) == "#199e70"  # the centre of the dot
+    assert colour_at(view, -5.0, -4.0) == "#d95926"  # the centre of the cross
+    assert colour_at(view, 8.0, 8.0) not in ("#199e70", "#d95926")  # empty map
+
+
+def test_particles_keep_their_size_on_screen_when_the_view_is_zoomed(window, qapp):
+    view = window.view
+    view.set_particles([(4.0, 3.0)], ["#199e70"], [False])
+    view.zoom_by(1.0 / 20.0)  # 4 r_g is now a twentieth of the distance on screen
+    qapp.processEvents()
+    assert colour_at(view, 4.0, 3.0) == "#199e70"
+    # The dot is 10 pixels across whatever the zoom: two pixels from its centre it is still
+    # there, nine pixels away it is not.
+    centre = pixel_of(view, 4.0, 3.0)
+    image = view.plot.grab().toImage()
+    ratio = image.devicePixelRatio()
+
+    def colour_beside(pixels):
+        return image.pixelColor(
+            round((centre.x() + pixels) * ratio), round(centre.y() * ratio)
+        ).name()
+
+    assert colour_beside(2) == "#199e70"
+    assert colour_beside(9) != "#199e70"
+
+
+def test_no_particles_means_nothing_is_drawn(window, qapp):
+    view = window.view
+    view.set_particles([(4.0, 3.0)], ["#199e70"], [False])
+    view.set_particles([], [], [])
+    qapp.processEvents()
+    assert view.particle_points() == () and view.particle_stopped() == ()
+    assert colour_at(view, 4.0, 3.0) != "#199e70"
+
+
+def test_particle_lists_must_match(window):
+    with pytest.raises(ValueError):
+        window.view.set_particles([(1.0, 2.0)], ["#199e70", "#d95926"], [False])
 
 
 def test_view_can_be_used_on_its_own(qapp):

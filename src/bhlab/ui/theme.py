@@ -1,7 +1,7 @@
 """The dark scientific theme: colours, fonts and the Qt style sheet."""
 
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QWidget
 
 BACKGROUND = "#0b0e14"
 PANEL = "#111620"
@@ -13,6 +13,20 @@ ORANGE = "#ff9d3c"
 BLUE = "#4cc2ff"
 PURPLE = "#b79cff"
 ERROR = "#ff6b6b"
+
+# Particle colours. Any two particles can end up side by side, so every pair of these has to be
+# easy to tell apart, also with the common forms of colour blindness, and against the three
+# circle colours above. Only three hues pass that test on this background (checked with a
+# palette validator: lightness, chroma, colour-blind separation, contrast). Further particles
+# share one neutral colour instead of hues that would be mistaken for one another.
+PARTICLE_COLOURS = ("#199e70", "#d95926", "#3987e5")
+PARTICLE_NEUTRAL = "#c3c2b7"
+
+
+def particle_colour(index: int) -> str:
+    """The colour of particle number ``index`` (0 for the first one added)."""
+    return PARTICLE_COLOURS[index] if index < len(PARTICLE_COLOURS) else PARTICLE_NEUTRAL
+
 
 _PALETTE = {
     "BACKGROUND": BACKGROUND,
@@ -37,6 +51,7 @@ QLabel { background: transparent; }
 QFrame#controlPanel { background: @PANEL; border: none; border-right: 1px solid @BORDER; }
 QFrame#infoPanel { background: @PANEL; border: none; border-left: 1px solid @BORDER; }
 QFrame#rowSeparator { background: @BORDER; border: none; min-height: 1px; max-height: 1px; }
+QFrame#runPanel { background: @PANEL; border: none; border-top: 1px solid @BORDER; }
 
 QLabel#pageSubtitle { color: @MUTED; font-size: 10pt; }
 QLabel#sectionLabel { color: @ORANGE; font-size: 8.5pt; font-weight: 700; }
@@ -53,6 +68,7 @@ QLabel#note, QLabel#sliderEnd, QLabel#helperLabel, QLabel#viewCaption { color: @
 QLabel#sliderEnd { font-size: 8.5pt; }
 QLabel#helperLabel[error="true"] { color: @ERROR; }
 QLabel#scaleBarLabel { color: @TEXT; font-size: 9.5pt; }
+QLabel#clockLabel { font-size: 11pt; font-weight: 600; }
 
 QCheckBox { spacing: 9px; }
 QCheckBox::indicator {
@@ -69,6 +85,7 @@ QLineEdit {
 }
 QLineEdit:focus { border: 1px solid @BLUE; }
 QLineEdit[invalid="true"] { border: 1px solid @ERROR; }
+QLineEdit#stateField { font-size: 10.5pt; padding: 5px 7px; }
 
 QPushButton {
     background: @CARD; border: 1px solid @BORDER; border-radius: 6px;
@@ -78,6 +95,9 @@ QPushButton:hover { border: 1px solid @MUTED; }
 QPushButton:pressed { background: @BORDER; }
 QPushButton:checked { border: 1px solid @ORANGE; color: @ORANGE; }
 QPushButton#viewButton { padding: 4px 12px; text-align: center; min-width: 14px; }
+QPushButton#runButton, QPushButton#formButton { padding: 6px 14px; text-align: center; }
+QPushButton#runButton { min-width: 44px; }
+QPushButton:disabled { color: @MUTED; border: 1px solid @BORDER; background: @PANEL; }
 
 QSlider::groove:horizontal { height: 4px; background: @BORDER; border-radius: 2px; }
 QSlider::sub-page:horizontal { background: @ORANGE; border-radius: 2px; }
@@ -85,6 +105,13 @@ QSlider::handle:horizontal {
     background: @ORANGE; width: 14px; height: 14px; margin: -5px 0; border-radius: 7px;
 }
 QSlider::handle:horizontal:hover { background: @TEXT; }
+
+QScrollArea#sideScroll { background: @PANEL; border: none; }
+QScrollBar:vertical { background: @PANEL; width: 10px; margin: 0px; }
+QScrollBar::handle:vertical { background: @BORDER; border-radius: 4px; min-height: 28px; }
+QScrollBar::handle:vertical:hover { background: @MUTED; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: none; }
 
 QStatusBar { background: @PANEL; border-top: 1px solid @BORDER; }
 QStatusBar::item { border: none; }
@@ -100,6 +127,17 @@ def style_sheet() -> str:
     for name, colour in _PALETTE.items():
         sheet = sheet.replace(f"@{name}", colour)
     return sheet
+
+
+def set_style_flag(widget: QWidget, flag: str, on: bool) -> None:
+    """Set a true/false property that the style sheet tests, such as ``invalid`` or ``error``.
+
+    A style sheet rule that depends on a property is only re-evaluated on a re-polish.
+    """
+    widget.setProperty(flag, on)
+    style = widget.style()
+    style.unpolish(widget)
+    style.polish(widget)
 
 
 def apply_theme(app: QApplication) -> None:

@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 
 from bhlab.constants import GM_SUN
 from bhlab.formatting import format_mass_solar
+from bhlab.ui.theme import set_style_flag
 
 
 @dataclass(frozen=True)
@@ -238,9 +239,5 @@ class MassControls(QWidget):
     def _show_error(self, message: str) -> None:
         self._error = message
         self.message_label.setText(message or _HELP_TEXT)
-        for widget, flag in ((self.mass_edit, "invalid"), (self.message_label, "error")):
-            widget.setProperty(flag, bool(message))
-            # A style sheet rule that depends on a property is only re-evaluated on a re-polish.
-            style = widget.style()
-            style.unpolish(widget)
-            style.polish(widget)
+        set_style_flag(self.mass_edit, "invalid", bool(message))
+        set_style_flag(self.message_label, "error", bool(message))
