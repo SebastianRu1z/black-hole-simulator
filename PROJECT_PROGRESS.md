@@ -1,7 +1,7 @@
 # Black Hole Physics Lab — Project Progress
 
-Last updated: 2026-11-14. Checkpoints 1A, 1B and 1C are approved and merged into `main` (only 1A is pushed).
-Checkpoint 1D-1 is built on branch `checkpoint-1d`, with the review fixes of 2026-11-14, and awaits approval.
+Last updated: 2026-11-15. Checkpoints 1A, 1B, 1C and 1D-1 are approved and merged into `main` (only 1A is
+pushed). Checkpoint 1D-2 has been proposed and is not approved.
 
 This file is the single source of truth for where the project stands.
 **Read it first in every new session, then inspect the code. Do not rebuild or overwrite existing work.**
@@ -32,11 +32,11 @@ This file is the single source of truth for where the project stands.
 | Item | State |
 |---|---|
 | Current stage | Stage 1 — working interactive simulation foundation (Newtonian) |
-| Last completed checkpoint | **1D-1 — simulation loop, run controls, particles entered as numbers** (built 2026-11-13, finished 2026-11-14 with the review fixes; awaiting approval) |
-| Last approved checkpoint | **1C-2** (approved by Sebastian on 2026-11-13); with it the whole of 1C. 1A, 1B and 1C-1 approved on 2026-11-12 |
-| Checkpoint in progress | None. 1D-1 is complete on `checkpoint-1d` and reported; not merged into `main`. |
-| Next step | Sebastian approves 1D-1 (then merge `checkpoint-1d` into `main`) and decides on 1D-2: placing particles with the mouse, selecting and removing them. No 1D-2 code before an explicit yes. |
-| Automated tests | 411 passed, 0 failed on `checkpoint-1d` (pytest 9.2.0, Python 3.14.7, 2026-11-14); 286 on `main`. `ruff check` and `ruff format --check` clean. |
+| Last completed checkpoint | **1D-1 — simulation loop, run controls, particles entered as numbers** (built 2026-11-13, finished 2026-11-14 with the review fixes) |
+| Last approved checkpoint | **1D-1** (approved by Sebastian on 2026-11-15). 1C-2 approved on 2026-11-13; 1A, 1B and 1C-1 on 2026-11-12 |
+| Checkpoint in progress | None. |
+| Next step | Sebastian decides on the 1D-2 plan proposed on 2026-11-15 (placing particles with the mouse, selecting and removing them). No 1D-2 code before an explicit yes; then branch `checkpoint-1d2` from `main`. |
+| Automated tests | 411 passed, 0 failed on `main` after merging 1D-1 (pytest 9.2.0, Python 3.14.7, 2026-11-15). `ruff check` and `ruff format --check` clean. |
 | Git | 1A (commit `ccea74b`) is merged into `main`. Each later checkpoint is built on its own branch and merged after approval. 1B (`7e9526b`, `e51d367` by Sebastian, and the completing commit) was merged into `main` locally on 2026-11-12 after Sebastian's approval. Branch `checkpoint-1c` was created from `main` (at `50b8baa`) after Sebastian approved starting 1C-1. 1C-1 and 1C-2 were committed there and, after Sebastian approved 1C-2 on 2026-11-13, merged into `main` locally. |
 | GitHub | Remote `origin` is `SebastianRu1z/black-hole-simulator`, created by Sebastian. On 2026-11-12 Sebastian asked for the approved 1A work to be pushed to it; `main` was pushed at commit `d903597`. Push `main` only when Sebastian asks; never push an unapproved checkpoint. Visibility not checked. On 2026-11-12 Sebastian also published `checkpoint-1b` himself, at `e51d367`. The approved 1B work on `main` and the completing commit on `checkpoint-1b` are not pushed: push only when Sebastian asks. |
 
@@ -53,7 +53,7 @@ This file is the single source of truth for where the project stands.
 | `bhlab.ui.viewport`, `bhlab.ui.scale_bar`, `bhlab.ui.view_options` (1B) | pyqtgraph map of the orbital plane in units of r_g: horizon disc, photon-sphere and ISCO circles with labels that hide when zoomed out, grid, drag to pan, wheel zoom about the cursor, zoom buttons, reset, zoom and pan limits, scale bar in r_g and in km, AU or light-years, cursor readout (x, y, r, φ) in the status bar, check boxes for the circles and the grid. The scales table sits in a right-hand panel |
 | `python -m bhlab` | opens the window |
 
-### Checkpoint 1D-1 (on `checkpoint-1d`, awaiting approval)
+### Checkpoint 1D-1 (approved 2026-11-15)
 
 | Module | What it does |
 |---|---|
@@ -167,7 +167,7 @@ the verification matrix below (§36), and references that are checked before the
 | 1A | Project skeleton, units module, application window | package `bhlab`, tested constants/units/formatting modules, PySide6 window showing live characteristic scales for a chosen mass, pytest and ruff wired up | **approved 2026-11-12** |
 | 1B | 2D black hole view and camera | pyqtgraph viewport: horizon disc, photon-sphere and ISCO circles (labelled as GR reference radii the Newtonian engine does not use), scale bar, pan/zoom/reset, cursor readout; the scales table moves to a side panel | **approved 2026-11-12** |
 | 1C | Newtonian physics engine (headless) | test-particle equations of motion about a point mass; velocity Verlet, RK4, SciPy DOP853 with event detection; orbital elements; pytest checks against Kepler; command-line run | split on 2026-11-12. **1C-1** (equations of motion, RK4, velocity Verlet, Kepler and convergence tests): **approved 2026-11-12**. **1C-2** (DOP853 with events, orbital elements, command-line run): **approved 2026-11-13** |
-| 1D | Particle placement and run controls | click-and-drag placement with a velocity vector, exact numeric inputs, rejection of invalid initial conditions, multiple particles, play/pause/reset/single-step/speed with physics decoupled from frame rate | split: **1D-1** (simulation loop, run controls, numeric input): built, awaiting approval. **1D-2** (mouse placement, selection, removal): not started |
+| 1D | Particle placement and run controls | click-and-drag placement with a velocity vector, exact numeric inputs, rejection of invalid initial conditions, multiple particles, play/pause/reset/single-step/speed with physics decoupled from frame rate | split: **1D-1** (simulation loop, run controls, numeric input): **approved 2026-11-15**. **1D-2** (mouse placement, selection, removal): not started |
 | 1E | Trails and live measurements | orbital trails, predicted path, selected-object panel (r, v, E, L, e, a, T, periapsis, apoapsis, status), unit switching, warning where the Newtonian model stops being trustworthy | not started |
 | 1F | Validation dashboard, plots, export, Stage 1 docs | conservation-error plots, solver comparison and convergence study, CSV/JSON/PNG export, Newtonian parts of README/PHYSICS/NUMERICAL_METHODS/VALIDATION | not started |
 
@@ -414,6 +414,8 @@ Claude Code's own `/code-review`, `/security-review` and `/simplify` are availab
 - 2026-11-14 — Sebastian asked for the thermos and improve reviews, then said "do recommended": fix I1–I3
   within 1D and plan the T1/T3 cleanup before Stage 2. He confirmed he had approved 1D-1, whose code a
   2026-11-13 session had left uncommitted and unrecorded. Session model: Opus 5.5.
+- 2026-11-15 — Sebastian approved Checkpoint 1D-1. `checkpoint-1d` was merged into `main` locally, not
+  pushed. The understanding-check questions were not answered.
 
 ## How to resume in a new session
 
