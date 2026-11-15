@@ -177,7 +177,7 @@ the verification matrix below (§36), and references that are checked before the
 | 1B | 2D black hole view and camera | pyqtgraph viewport: horizon disc, photon-sphere and ISCO circles (labelled as GR reference radii the Newtonian engine does not use), scale bar, pan/zoom/reset, cursor readout; the scales table moves to a side panel | **approved 2026-11-12** |
 | 1C | Newtonian physics engine (headless) | test-particle equations of motion about a point mass; velocity Verlet, RK4, SciPy DOP853 with event detection; orbital elements; pytest checks against Kepler; command-line run | split on 2026-11-12. **1C-1** (equations of motion, RK4, velocity Verlet, Kepler and convergence tests): **approved 2026-11-12**. **1C-2** (DOP853 with events, orbital elements, command-line run): **approved 2026-11-13** |
 | 1D | Particle placement and run controls | click-and-drag placement with a velocity vector, exact numeric inputs, rejection of invalid initial conditions, multiple particles, play/pause/reset/single-step/speed with physics decoupled from frame rate | split: **1D-1** (simulation loop, run controls, numeric input): **approved 2026-11-15**. **1D-2** (mouse placement, selection, removal): built 2026-11-15, awaiting approval |
-| 1E | Trails and live measurements | orbital trails, predicted path, selected-object panel (r, v, E, L, e, a, T, periapsis, apoapsis, status), unit switching, warning where the Newtonian model stops being trustworthy | not started |
+| 1E | Trails and live measurements | split on 2026-11-15 after Sebastian's feedback. **1E-1** particle tracker panel: list of particles; for the selected one live r, φ, speed, circular and escape speed, v/v_esc, E, L, orbit kind, e, a, periapsis, apoapsis, period, time to next periapsis, fate (bound / escapes / reaches r = 2), values in GM units and SI for the mass, warning where Newton stops being trustworthy. **1E-2** trails and predicted path. **1E-3** gravitational field view (spec §5): Newtonian acceleration arrows, potential and field-strength map in physical units, tidal stretching, with a note on why relativity cannot be drawn as arrows | proposed, not started |
 | 1F | Validation dashboard, plots, export, Stage 1 docs | conservation-error plots, solver comparison and convergence study, CSV/JSON/PNG export, Newtonian parts of README/PHYSICS/NUMERICAL_METHODS/VALIDATION | not started |
 
 ### Checkpoint 1A: what was built, and how it differs from the proposal
@@ -438,6 +438,11 @@ Claude Code's own `/code-review`, `/security-review` and `/simplify` are availab
   pushed. The understanding-check questions were not answered.
 - 2026-11-15 — Sebastian approved starting Checkpoint 1D-2 as proposed (Place mode, v = d / r^(3/2),
   selection and removal). Built on `checkpoint-1d2` with Opus 5.5.
+- 2026-11-15 — Sebastian liked placing particles with their own speed. He asked for a panel to track
+  individual particles (speed, escape information, other relevant quantities) and to "see the gravitational
+  effects of the black hole", wondering whether that waits for 3D. Answer given: a 2D field view fits
+  Stage 1 (spec §5); relativistic views follow in Stage 2 and 3D in Stage 6. Planned as 1E-1 (tracker)
+  and 1E-3 (field view). 1D-2 not yet explicitly approved.
 
 ## How to resume in a new session
 
