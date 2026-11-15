@@ -4,11 +4,11 @@ A growing technical reference for understanding this project: the physics, the m
 Python and the engineering ideas behind the code. It is organised by topic, not by date. Each
 entry names the checkpoint that introduced it, and every new checkpoint adds to the sections below.
 
-Last updated: 2026-11-15, Checkpoint 1D-2. Covered so far: 1A (units, constants, the window), 1B (the
+Last updated: 2026-11-15, Checkpoint 1E-1. Covered so far: 1A (units, constants, the window), 1B (the
 2D map), 1C-1 (equations of motion, RK4, velocity Verlet), 1C-2 (adaptive DOP853, events, orbital
 elements, the `python -m bhlab.orbit` command) and 1D-1 (particles moving in the window: one simulated
 clock, real-time playback, stopping at the horizon) and 1D-2 (placing particles with the mouse, selecting
-and removing them).
+and removing them) and 1E-1 (the particle tracker panel).
 
 File paths in this document are relative to `src/bhlab/` unless they start with `tests/`.
 
@@ -368,6 +368,37 @@ periapsis 2a − 8 = 1.94, just inside r = 2: the preview warns that it will sto
 at most once, and only if it is still on its way in (r·v < 0). So the particle reaches the stop radius
 when its periapsis is ≤ 2 and it is bound or approaching (`preview` in `simulation/placement.py`).
 
+### 2.17 Escape speed, energy and the fate of a particle (1E-1)
+
+At distance r a particle escapes if its kinetic energy beats the potential energy: v²/2 ≥ 1/r, so the
+**escape speed** is v_esc = √(2/r), exactly √2 times the circular speed √(1/r). The tracker shows
+v / v_esc, which is below 1 exactly when E = v²/2 − 1/r < 0, the bound case. Note what does *not*
+matter: the direction. A particle at the escape speed escapes whether it moves sideways or outward,
+unless it is pointed so far inward that its closest approach is inside r = 2 (section 2.16).
+
+Example, the circular orbit at r = 8 around 10 M☉: v = √(1/8) = 0.3536 c = 106 000 km/s, v_esc = 0.5 c,
+ratio 0.7071 = 1/√2, E = −1/(2·8) = −0.0625 c², period 2π·8^1.5 = 142.2 GM/c³ = 7.003 ms.
+
+### 2.18 When will it next come closest? Kepler's equation backwards (1E-1)
+
+Section 2.13 used Kepler's equation to find *where* a particle is at a given time. The tracker needs
+the reverse: from the state now, the time since the last periapsis. The eccentric anomaly E_a comes
+straight from the state, with no iteration:
+
+    cos E_a = (1 − r/a) / e          sin E_a = (r·v) / (e √a)          (GM = 1)
+
+`atan2` combines the two into an angle in the right quadrant, then t_p = a^(3/2)(E_a − e sin E_a) and
+the next periapsis is T − t_p away. The tests check this against the solver: integrate on from the
+state and the periapsis event arrives at the predicted time to 1 part in 10⁸.
+
+### 2.19 How far can Newton be trusted? (1E-1)
+
+Relativity changes Newtonian results by relative amounts of order GM/(rc²) = 1/r (gravity's strength)
+and v²/c² (speed). The tracker shows the larger of the two as "corrections ≈ …%": good below 1 %
+(r > 100, v < 0.1 c), approximate below 10 %, a rough guide beyond (r < 10 or v > 0.32 c). These are
+orders of magnitude, not error bars. Example: precession of an orbit per lap is 6π/r radians in the
+weak field, about 19 % of a radian at r = 100.
+
 ## 3. Python
 
 ### 3.1 How the project is laid out (1A)
@@ -593,6 +624,21 @@ To find which particle a click meant, `particle_index_at` measures the distance 
 particle **on screen**, in pixels (distance in r_g × pixels per r_g), and takes the nearest within 12 px.
 Measuring in pixels, not r_g, keeps the target the same size under the mouse at every zoom.
 
+### 3.17 Redrawing at a readable rate (1E-1)
+
+The simulation updates every frame (about 60 times a second), but numbers that change 60 times a
+second cannot be read. `TrackerPanel.show_particles` redraws at most every 0.1 s while running, and at
+once when something discrete changes (a selection, a particle added or removed, a pause). It
+compares the clock with the time of the last redraw, using the same injectable clock as the runner, so
+the tests can check the rate without waiting.
+
+### 3.18 A pure function behind every panel (1E-1)
+
+All the tracker's physics is in `track(state, stop_radius)` in `simulation/tracking.py`, which takes
+numbers and returns a frozen dataclass. The panel only formats it. The same split as placement
+(section 2.16): the 22 tests of the physics run without a window, and the panel tests only check that
+the numbers reach the screen.
+
 ## 4. Key functions
 
 | Function | File | Takes | Gives |
@@ -625,6 +671,10 @@ Measuring in pixels, not r_g, keeps the target the same size under the mouse at 
 | `preview` | `simulation/placement.py` | simulation, x, y, vₓ, v_y | a `Preview`: valid or why not, the orbit, whether it reaches r = 2 |
 | `Simulation.check_start`, `.remove_particle` | `simulation/model.py` | a starting state; a particle number | the checked state or ValueError; removes it or KeyError |
 | `BlackHoleView.particle_index_at` | `ui/viewport.py` | a map point | the particle within 12 px, or None |
+| `track` | `simulation/tracking.py` | a state, stop radius, whether stopped | a `Tracking`: r, φ, speeds, v/v_esc, orbit, fate, time to periapsis, reliability |
+| `time_to_next_periapsis` | `simulation/tracking.py` | a state and its orbital elements | time in GM/c³, or None |
+| `comes_down_to` | `simulation/tracking.py` | a state, its elements, a radius | whether it will reach that radius (shared with the placement preview) |
+| `TrackerPanel.show_particles` | `ui/tracker_panel.py` | particles, selection, black hole, stop radius | redraws the list and numbers, at most 10 times a second while running |
 | `SimulationRunner.tick` | `ui/simulation_runner.py` | nothing (reads the clock) | advances by speed × real time, within the frame budget |
 
 `format_length_auto` without its docstring, as an example of a rule written as code:
@@ -686,6 +736,9 @@ Only connections that are real are listed here.
 - **Auto-ranging input (1D-2).** The arrow-to-velocity rule scales the input with the distance, as an
   auto-ranging multimeter changes range with the signal, so the same hand movement is useful near the
   black hole and far from it.
+- **Telemetry displays (1E-1).** The tracker is a ground-station readout: raw state in, derived
+  quantities out, refreshed at a human rate (10 Hz) while the data flows at 60 Hz. Instrument panels
+  decimate their display the same way.
 - **Not built yet.** Time dilation as a frequency shift, signal paths along light rays, spectra and
   link budgets come in Stages 3 and 5.
 
@@ -760,6 +813,12 @@ Predict first, then start the program with `.venv\Scripts\python.exe -m bhlab` a
 23. Drag straight outward from (8, 0) to (14, 0). Prediction: v = 6 / 8^1.5 = 0.265 c, below the escape
     speed √(2/8) = 0.5 c, so the particle rises, stops, falls straight back and is stopped at r = 2.
     The preview says "Bound orbit, e = 1.000" and warns before you release. Then try (8, 0) to (25, 0).
+24. Add the circular orbit at r = 8 and select it. Prediction: speed ÷ escape speed = 0.7071,
+    E = −0.06250 c², period 142.2 GM/c³ = 7.003 ms, "rough guide only" (corrections ≈ 13 %).
+25. Add (30, 0) with v_y = 0.13 and select it. Press Play and watch "Next closest approach in" count
+    down; when it reaches about 0, "Distance r" should be at its smallest, 10.19 GM/c².
+26. Choose Sagittarius A* while tracking the r = 8 orbit. Prediction: GM/c² values do not change at all;
+    the SI period becomes 50.19 min.
 
 ## 7. To study next
 

@@ -67,6 +67,17 @@ QLabel#unitLabel { color: @MUTED; font-size: 12pt; }
 QLabel#note, QLabel#sliderEnd, QLabel#helperLabel, QLabel#viewCaption { color: @MUTED; }
 QLabel#sliderEnd { font-size: 8.5pt; }
 QLabel#helperLabel[error="true"] { color: @ERROR; }
+QLabel#trackerName { font-size: 9.5pt; }
+QLabel#trackerValue { color: @BLUE; font-size: 10pt; font-weight: 600; }
+QLabel#trackerValue[error="true"] { color: @ERROR; }
+QLabel#trackerRemark { color: @MUTED; font-size: 8.5pt; }
+QListWidget#particleList {
+    background: @BACKGROUND; border: 1px solid @BORDER; border-radius: 6px; padding: 2px;
+}
+QListWidget#particleList::item { padding: 3px 4px; }
+QListWidget#particleList::item:selected {
+    background: @CARD; color: @TEXT; border: 1px solid @MUTED;
+}
 QLabel#scaleBarLabel { color: @TEXT; font-size: 9.5pt; }
 QLabel#clockLabel { font-size: 11pt; font-weight: 600; }
 

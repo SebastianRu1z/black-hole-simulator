@@ -1,8 +1,8 @@
 # Black Hole Physics Lab — Project Progress
 
 Last updated: 2026-11-15. Checkpoints 1A, 1B, 1C and 1D-1 are approved and merged into `main` (only 1A is
-pushed). 1D-2 is approved and merged too. Checkpoint 1E-1 (particle tracker panel) is being built on
-`checkpoint-1e1`.
+pushed). 1D-2 is approved and merged too. Checkpoint 1E-1 (particle tracker panel) is built on
+`checkpoint-1e1` and awaits approval.
 
 This file is the single source of truth for where the project stands.
 **Read it first in every new session, then inspect the code. Do not rebuild or overwrite existing work.**
@@ -33,11 +33,11 @@ This file is the single source of truth for where the project stands.
 | Item | State |
 |---|---|
 | Current stage | Stage 1 — working interactive simulation foundation (Newtonian) |
-| Last completed checkpoint | **1D-2 — placing particles with the mouse, selecting and removing them** (built and approved 2026-11-15) |
+| Last completed checkpoint | **1E-1 — particle tracker panel** (built 2026-11-15, awaiting approval) |
 | Last approved checkpoint | **1D-2** (approved by Sebastian on 2026-11-15). 1D-1 approved 2026-11-15. 1C-2 approved on 2026-11-13; 1A, 1B and 1C-1 on 2026-11-12 |
-| Checkpoint in progress | **1E-1 — particle tracker panel**, approved to start 2026-11-15, on `checkpoint-1e1`. |
-| Next step | Finish and report 1E-1, then wait for approval. 1E-2 (trails) and 1E-3 (field view) need their own yes. |
-| Automated tests | 448 passed, 0 failed on `main` after merging 1D-2 (pytest 9.2.0, Python 3.14.7, 2026-11-15). `ruff check` and `ruff format --check` clean. |
+| Checkpoint in progress | None. 1E-1 is complete on `checkpoint-1e1` and reported; not merged into `main`. |
+| Next step | Sebastian approves 1E-1 (then merge `checkpoint-1e1` into `main`) and decides on 1E-2 (trails and predicted path) or 1E-3 (gravitational field view). No code before an explicit yes. |
+| Automated tests | 482 passed, 0 failed on `checkpoint-1e1` (pytest 9.2.0, Python 3.14.7, 2026-11-15); 448 on `main`. `ruff check` and `ruff format --check` clean. |
 | Git | 1A (commit `ccea74b`) is merged into `main`. Each later checkpoint is built on its own branch and merged after approval. 1B (`7e9526b`, `e51d367` by Sebastian, and the completing commit) was merged into `main` locally on 2026-11-12 after Sebastian's approval. Branch `checkpoint-1c` was created from `main` (at `50b8baa`) after Sebastian approved starting 1C-1. 1C-1 and 1C-2 were committed there and, after Sebastian approved 1C-2 on 2026-11-13, merged into `main` locally. |
 | GitHub | Remote `origin` is `SebastianRu1z/black-hole-simulator`, created by Sebastian. On 2026-11-12 Sebastian asked for the approved 1A work to be pushed to it; `main` was pushed at commit `d903597`. Push `main` only when Sebastian asks; never push an unapproved checkpoint. Visibility not checked. On 2026-11-12 Sebastian also published `checkpoint-1b` himself, at `e51d367`. The approved 1B work on `main` and the completing commit on `checkpoint-1b` are not pushed: push only when Sebastian asks. |
 
@@ -53,6 +53,14 @@ This file is the single source of truth for where the project stands.
 | `bhlab.ui` | PySide6 window: mass by text field (applied with Enter), logarithmic slider (1 to 10¹¹ M☉) or preset; live table of six characteristic scales with formulas and tooltips; invalid input is reported and never applied |
 | `bhlab.ui.viewport`, `bhlab.ui.scale_bar`, `bhlab.ui.view_options` (1B) | pyqtgraph map of the orbital plane in units of r_g: horizon disc, photon-sphere and ISCO circles with labels that hide when zoomed out, grid, drag to pan, wheel zoom about the cursor, zoom buttons, reset, zoom and pan limits, scale bar in r_g and in km, AU or light-years, cursor readout (x, y, r, φ) in the status bar, check boxes for the circles and the grid. The scales table sits in a right-hand panel |
 | `python -m bhlab` | opens the window |
+
+### Checkpoint 1E-1 (on `checkpoint-1e1`, awaiting approval)
+
+| Module | What it does |
+|---|---|
+| `bhlab.simulation.tracking` | `track`: r, φ, speed, radial speed, circular and escape speed, v/v_esc, orbital elements, fate (bound / escapes / reaches stop radius / stopped), time to next periapsis by Kepler's equation, reliability of Newton (1/r and v²); `comes_down_to` now shared with the placement preview |
+| `bhlab.ui.tracker_panel` | right-hand TRACKER section: coloured list of particles with their fate; 17 rows of live numbers for the selected one, each in GM units with SI underneath; redrawn at most 10 times a second while running |
+| `bhlab.ui.main_window` (extended) | selection in the list and on the map kept in step; tracker refreshed on mass change and on pause. Fixed a 1D-1 bug: the "running slower" notice stayed on after pausing |
 
 ### Checkpoint 1D-2 (approved 2026-11-15)
 
@@ -178,7 +186,7 @@ the verification matrix below (§36), and references that are checked before the
 | 1B | 2D black hole view and camera | pyqtgraph viewport: horizon disc, photon-sphere and ISCO circles (labelled as GR reference radii the Newtonian engine does not use), scale bar, pan/zoom/reset, cursor readout; the scales table moves to a side panel | **approved 2026-11-12** |
 | 1C | Newtonian physics engine (headless) | test-particle equations of motion about a point mass; velocity Verlet, RK4, SciPy DOP853 with event detection; orbital elements; pytest checks against Kepler; command-line run | split on 2026-11-12. **1C-1** (equations of motion, RK4, velocity Verlet, Kepler and convergence tests): **approved 2026-11-12**. **1C-2** (DOP853 with events, orbital elements, command-line run): **approved 2026-11-13** |
 | 1D | Particle placement and run controls | click-and-drag placement with a velocity vector, exact numeric inputs, rejection of invalid initial conditions, multiple particles, play/pause/reset/single-step/speed with physics decoupled from frame rate | split: **1D-1** (simulation loop, run controls, numeric input): **approved 2026-11-15**. **1D-2** (mouse placement, selection, removal): **approved 2026-11-15** |
-| 1E | Trails and live measurements | split on 2026-11-15 after Sebastian's feedback. **1E-1** particle tracker panel: list of particles; for the selected one live r, φ, speed, circular and escape speed, v/v_esc, E, L, orbit kind, e, a, periapsis, apoapsis, period, time to next periapsis, fate (bound / escapes / reaches r = 2), values in GM units and SI for the mass, warning where Newton stops being trustworthy. **1E-2** trails and predicted path. **1E-3** gravitational field view (spec §5): Newtonian acceleration arrows, potential and field-strength map in physical units, tidal stretching, with a note on why relativity cannot be drawn as arrows | proposed, not started |
+| 1E | Trails and live measurements | split on 2026-11-15 after Sebastian's feedback. **1E-1** (built 2026-11-15, awaiting approval) particle tracker panel: list of particles; for the selected one live r, φ, speed, circular and escape speed, v/v_esc, E, L, orbit kind, e, a, periapsis, apoapsis, period, time to next periapsis, fate (bound / escapes / reaches r = 2), values in GM units and SI for the mass, warning where Newton stops being trustworthy. **1E-2** trails and predicted path. **1E-3** gravitational field view (spec §5): Newtonian acceleration arrows, potential and field-strength map in physical units, tidal stretching, with a note on why relativity cannot be drawn as arrows | proposed, not started |
 | 1F | Validation dashboard, plots, export, Stage 1 docs | conservation-error plots, solver comparison and convergence study, CSV/JSON/PNG export, Newtonian parts of README/PHYSICS/NUMERICAL_METHODS/VALIDATION | not started |
 
 ### Checkpoint 1A: what was built, and how it differs from the proposal
@@ -296,6 +304,7 @@ No security findings. Not audited: interface code, performance, dependencies, do
 | Plunge handling: stop at a radius, failure at r = 0 | `solvers.adaptive`, `solvers.fixed_step`, `orbit` (review fix) | stop radius r = 2; `IntegrationError` | 21 pytest tests | fall from rest at r = 10 stops at the analytic 33.70 (adaptive, to 1e-9; fixed step, within one step); failure at the analytic time to the centre, (π/2)√(r₀³/2) = 35.12, to 1e-3 | not applicable | yes (module docstrings, learning notes 2.15) |
 | Simulation clock and real-time playback | `simulation.model`, `ui.simulation_runner` (1D-1) | one clock, least-advanced stepping, dense output, speed × Δt | 42 simulation, 14 stepper, 39 interface tests | positions after the same simulated time agree at any frame rate; free fall stops at r = 2 at 33.70; a circular orbit returns after one Kepler period | not applicable | yes (module docstrings) |
 | Placement rule and orbit preview | `simulation.placement` (1D-2) | v = d / r^(3/2); reaches r = 2 if periapsis ≤ 2 and (bound or r·v < 0) | 17 pytest tests, plus 20 window tests driven with the mouse | sideways arrow of length r gives v = √(1/r) and e = 0 to 1e-12 (r = 3, 10, 250); √2 r gives E = 0 to 1e-15; v at (3, 4) equals d·5^(−3/2); periapsis/apoapsis 50/150 for the a = 100 ellipse; preview refusals match `add_particle` | not applicable | yes (module docstring, learning notes 2.16) |
+| Particle tracking: speeds, fate, Kepler timing, reliability | `simulation.tracking` (1E-1) | v_circ = √(1/r), v_esc = √(2/r), E, L, elements, eccentric anomaly from the state, t_p = a^(3/2)(E_a − e sin E_a) | 22 pytest tests, plus 12 window tests | circular orbit at r = 8 (all speeds, E, T); fates of five hand-worked states; time to periapsis T/2 from apoapsis, also on a rotated orbit (1e-10); after 0.1, 0.37, 0.5, 0.83 of an orbit the prediction matches the solver's periapsis event to 1e-8; reliability thresholds at 1 % and 10 % | not applicable | yes (module docstring, learning notes 2.17–2.19) |
 | Schwarzschild timelike geodesics | prototype script | yes | script self-test, 6 checks (not pytest) | circular-orbit period (0.01 %), weak-field precession (within 2 %), capture inside ISCO | none | partly, in docstring |
 | Schwarzschild null geodesics and thin-disc image | prototype script | yes | none | none (visual check only) | none | partly, in docstring |
 | Kerr, RF link, DSP, interferometry, curved-spacetime EM, research extensions | not started | — | — | — | — | — |
@@ -304,7 +313,8 @@ No model in this project may be described as validated or research-grade until i
 
 Test suite breakdown (2026-11-14, `checkpoint-1d`): constants 6, units 40, formatting 41, architecture 1, interface 38,
 map 62, Newtonian physics 26, fixed-step solvers 43, orbital elements 14, adaptive solver 29, stepper 14, command
-line 16, simulation 42, simulation interface 39, placement 17 (1D-2), placement interface 20 (1D-2). Total 448.
+line 16, simulation 42, simulation interface 39, placement 17 (1D-2), placement interface 20 (1D-2), tracking 22 (1E-1), tracker interface 12 (1E-1).
+Total 482.
 (The breakdown above the 1D-2 entries is for 2026-11-14.)
 
 ## Known issues and limitations
@@ -354,6 +364,13 @@ Checkpoint 1C-2:
 
 Checkpoint 1D-1:
 - Particles leave no trail yet (1E), so one that leaves the view is simply gone from sight.
+
+Checkpoint 1E-1:
+- The right-hand panel is long: the scales and view options are below the tracker and need scrolling.
+- In the off-screen checks the pace of simulated time varied between about 75 % and 100 % of the speed
+  set, with and without the tracker, from run to run: load on the machine, not the panel (measured
+  three times; the tracker's own redraw takes about 0.2 ms). Worth watching on Sebastian's screen.
+- The SI values of energy (J/kg) and angular momentum (m²/s) are per kilogram of the particle.
 
 Checkpoint 1D-2:
 - A placed particle starts where the mouse was pressed, so its coordinates carry pixel noise
@@ -446,6 +463,8 @@ Claude Code's own `/code-review`, `/security-review` and `/simplify` are availab
   and 1E-3 (field view). 1D-2 not yet explicitly approved.
 - 2026-11-15 — Sebastian approved 1D-2 ("Yes, go ahead") and starting 1E-1, the particle tracker panel.
   `checkpoint-1d2` merged into `main` locally, not pushed.
+- 2026-11-15 — 1E-1 built: tracker panel as Sebastian asked (individual particles, speed, escape
+  information). Awaiting his approval.
 
 ## How to resume in a new session
 

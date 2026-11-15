@@ -4,11 +4,11 @@ An interactive numerical laboratory for black hole physics, built one validated 
 from Newtonian gravity, through Schwarzschild and Kerr spacetimes, to electrical-engineering
 laboratories on top of them (RF links, signal processing, radio interferometry).
 
-**Status: early development — Stage 1, Checkpoint 1D-2.**
+**Status: early development — Stage 1, Checkpoint 1E-1.**
 The roadmap, and the verification status of every physics model, are in
 [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md).
 
-![The application window at Checkpoint 1D-2](docs/images/checkpoint-1d2.png)
+![The application window at Checkpoint 1E-1](docs/images/checkpoint-1e1.png)
 
 ## What works today
 
@@ -33,9 +33,14 @@ The roadmap, and the verification status of every physics model, are in
   you the orbit it will follow. Click a particle to select it, and remove it with Remove or Delete.
   A particle that reaches r = 2 GM/c² is stopped there: Newton's theory has no horizon, so that is
   where this model ends.
-- **Automated tests**: 448 of them, for the physics, the solvers, the simulation and the window.
+- **Particle tracker** (`bhlab.simulation.tracking`, right-hand panel): a list of every particle and
+  what it will do (bound, escapes, reaches r = 2, stopped). Pick one, on the map or in the list, to
+  follow its distance, speed, circular and escape speed, energy, angular momentum, orbit shape and
+  period, the time to its next closest approach, and how far Newton's theory can be trusted there,
+  each in GM/c² units and in SI for the chosen mass.
+- **Automated tests**: 482 of them, for the physics, the solvers, the simulation and the window.
 
-Not there yet: orbit trails, a panel for the selected particle, and relativity. Those arrive in later
+Not there yet: orbit trails, a view of the gravitational field, and relativity. Those arrive in later
 checkpoints, each one tested before the next begins.
 
 ## Quick start (Windows)

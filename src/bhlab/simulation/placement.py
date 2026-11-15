@@ -29,6 +29,7 @@ from dataclasses import dataclass
 
 from bhlab.physics.orbital_elements import OrbitalElements, orbital_elements
 from bhlab.simulation.model import Simulation
+from bhlab.simulation.tracking import comes_down_to
 
 
 def drag_velocity(x: float, y: float, dx: float, dy: float) -> tuple[float, float]:
@@ -78,8 +79,5 @@ def preview(simulation: Simulation, x: float, y: float, vx: float, vy: float) ->
     except ValueError as error:
         return Preview(x, y, vx, vy, str(error), None, False)
     elements = orbital_elements(state)
-    approaching = x * vx + y * vy < 0.0
-    # The orbit comes down to its periapsis again if it is bound, or if it is still on its way in.
-    comes_down = elements.kind == "bound" or approaching
-    reaches = comes_down and elements.periapsis <= simulation.stop_radius
+    reaches = comes_down_to(state, elements, simulation.stop_radius)
     return Preview(x, y, vx, vy, None, elements, reaches)

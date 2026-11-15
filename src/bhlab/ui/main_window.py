@@ -26,6 +26,7 @@ from bhlab.ui.run_controls import RunControls
 from bhlab.ui.scales_panel import ScalesPanel
 from bhlab.ui.simulation_runner import SimulationRunner
 from bhlab.ui.theme import particle_colour
+from bhlab.ui.tracker_panel import TrackerPanel
 from bhlab.ui.view_options import ViewOptions
 from bhlab.ui.viewport import BlackHoleView
 from bhlab.units import HORIZON_RADIUS_RG, BlackHole
@@ -158,6 +159,7 @@ class MainWindow(QMainWindow):
             self.simulation, speed=self.run_controls.speed(), clock=clock, parent=self
         )
         self.particle_form = ParticleForm()
+        self.tracker = TrackerPanel(clock=clock)
 
         self._add_dock(
             "controlDock",
@@ -167,7 +169,7 @@ class MainWindow(QMainWindow):
         self._add_dock(
             "scalesDock",
             Qt.DockWidgetArea.RightDockWidgetArea,
-            _side_panel("infoPanel", 380, self.scales, self.view_options),
+            _side_panel("infoPanel", 380, self.tracker, self.scales, self.view_options),
         )
         # The run controls sit under the map only: the side panels keep the full height.
         self.setCorner(Qt.Corner.BottomLeftCorner, Qt.DockWidgetArea.LeftDockWidgetArea)
@@ -193,12 +195,15 @@ class MainWindow(QMainWindow):
         self.run_controls.reset_requested.connect(self.runner.reset)
         self.run_controls.speed_changed.connect(self.runner.set_speed)
         self.runner.running_changed.connect(self.run_controls.set_running)
+        # On pause: clear the "cannot keep up" notice and show the tracker's exact numbers.
+        self.runner.running_changed.connect(lambda _running: self._show_simulation())
         self.runner.changed.connect(self._show_simulation)
         self.particle_form.add_requested.connect(self._on_add_requested)
         self.particle_form.remove_requested.connect(self._remove_selected)
         self.view.placement_moved.connect(self._on_placement_moved)
         self.view.placement_finished.connect(self._on_placement_finished)
         self.view.map_clicked.connect(self._on_map_clicked)
+        self.tracker.particle_chosen.connect(self._select)
         # A line edit with the focus keeps Delete for its own text; elsewhere it removes.
         self.delete_shortcut = QShortcut(QKeySequence(Qt.Key.Key_Delete), self)
         self.delete_shortcut.activated.connect(self._remove_selected)
@@ -237,6 +242,7 @@ class MainWindow(QMainWindow):
         self.scales.set_black_hole(self._black_hole)
         self.view.set_black_hole(self._black_hole)
         self.run_controls.set_black_hole(self._black_hole)
+        self._show_simulation()  # the tracker's SI values depend on the mass
 
     def _on_cursor_moved(self, x: float, y: float) -> None:
         self.cursor_label.setText(describe_cursor(x, y, self._black_hole))
@@ -339,3 +345,10 @@ class MainWindow(QMainWindow):
         self.run_controls.set_time(self.simulation.time)
         self.run_controls.set_behind(self.runner.is_behind)
         self.particle_form.set_summary(describe_particles(particles, self.simulation.stop_radius))
+        self.tracker.show_particles(
+            particles,
+            self._selected_id if self._selected_id in self._shown_ids else None,
+            self._black_hole,
+            self.simulation.stop_radius,
+            force=not self.runner.is_running,
+        )
