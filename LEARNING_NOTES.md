@@ -4,10 +4,11 @@ A growing technical reference for understanding this project: the physics, the m
 Python and the engineering ideas behind the code. It is organised by topic, not by date. Each
 entry names the checkpoint that introduced it, and every new checkpoint adds to the sections below.
 
-Last updated: 2026-11-14, Checkpoint 1D-1. Covered so far: 1A (units, constants, the window), 1B (the
+Last updated: 2026-11-15, Checkpoint 1D-2. Covered so far: 1A (units, constants, the window), 1B (the
 2D map), 1C-1 (equations of motion, RK4, velocity Verlet), 1C-2 (adaptive DOP853, events, orbital
 elements, the `python -m bhlab.orbit` command) and 1D-1 (particles moving in the window: one simulated
-clock, real-time playback, stopping at the horizon). Placing particles with the mouse is 1D-2.
+clock, real-time playback, stopping at the horizon) and 1D-2 (placing particles with the mouse, selecting
+and removing them).
 
 File paths in this document are relative to `src/bhlab/` unless they start with `tests/`.
 
@@ -346,6 +347,27 @@ Newton's theory has no horizon, so the stop at r = 2 is not physics: it marks wh
 declared to end. The simulation, the command line and (on request) the fixed-step integrators all use
 the same rule.
 
+### 2.16 From a dragged arrow to a velocity (1D-2)
+
+`simulation/placement.py` turns an arrow d (in r_g) dragged from the point r into a velocity:
+
+    v = d / r^(3/2)
+
+Why this rule: the circular speed is √(1/r), and an arrow of length r gives r · r^(−3/2) = √(1/r). So
+**an arrow as long as the distance to the black hole, drawn sideways, is exactly a circular orbit**;
+√2 times longer is the escape speed √(2/r). The divisor r^(3/2) is also a time: T/(2π), the time a
+circular orbit at r takes to turn one radian. The arrow tip is where the particle would be after that
+time if gravity were switched off.
+
+Worked example: press at (8, 0) and drag to (8, 5). r = 8, r^(3/2) = 22.63, so v = (0, 5/22.63) =
+(0, 0.2210) c. The circular speed there is √(1/8) = 0.3536 c, so this is 0.625 × circular: a bound
+ellipse with its apoapsis at r = 8. Vis-viva gives a = 1/(2/r − v²) = 1/(0.25 − 0.04883) = 4.971 and
+periapsis 2a − 8 = 1.94, just inside r = 2: the preview warns that it will stop at the horizon.
+
+**Will it come down to r = 2?** A bound orbit passes its periapsis every lap. An unbound one passes it
+at most once, and only if it is still on its way in (r·v < 0). So the particle reaches the stop radius
+when its periapsis is ≤ 2 and it is bound or approaching (`preview` in `simulation/placement.py`).
+
 ## 3. Python
 
 ### 3.1 How the project is laid out (1A)
@@ -552,6 +574,25 @@ makes timing code testable: this is called *dependency injection*.
 failure different exit codes: 2 for invalid input (`ValueError`) and 1 for a run the solver could
 not finish.
 
+### 3.15 Overriding a library's event handlers (1D-2)
+
+pyqtgraph delivers mouse events by calling methods on the items under the cursor:
+`mouseDragEvent(ev)` and `mouseClickEvent(ev)`. `_MapViewBox` in `ui/viewport.py` is a *subclass* of
+pyqtgraph's `ViewBox` that *overrides* those two methods. In place mode it handles the left button
+itself; otherwise it calls `super().mouseDragEvent(...)`, so panning works exactly as before.
+
+Each event is offered to the items under the cursor, top first, until one *accepts* it
+(`ev.accept()`). That is how a bug crept in: pyqtgraph's scatter item accepts a click that lands on
+one of its dots, so clicking a particle never reached the map. The fix is a two-line subclass, `_Marks`,
+whose `mouseClickEvent` calls `ev.ignore()` and lets the click pass through. Lesson: in an event
+system, an item that only *displays* something must not *consume* input.
+
+### 3.16 Hit testing (1D-2)
+
+To find which particle a click meant, `particle_index_at` measures the distance from the click to every
+particle **on screen**, in pixels (distance in r_g × pixels per r_g), and takes the nearest within 12 px.
+Measuring in pixels, not r_g, keeps the target the same size under the mouse at every zoom.
+
 ## 4. Key functions
 
 | Function | File | Takes | Gives |
@@ -580,6 +621,10 @@ not finish.
 | `AdaptiveStepper.step`, `.state_at` | `solvers/adaptive.py` | nothing; a time inside the latest step | one DOP853 step; the interpolated state |
 | `Simulation.add_particle` | `simulation/model.py` | x, y, vₓ, v_y | a `Particle`; refuses r ≤ 2 and speeds ≥ c |
 | `Simulation.advance` | `simulation/model.py` | duration, optional `keep_going` | moves the clock and every particle; True if it covered the whole duration |
+| `drag_velocity` | `simulation/placement.py` | start (x, y), arrow (dₓ, d_y) | velocity d / r^(3/2) |
+| `preview` | `simulation/placement.py` | simulation, x, y, vₓ, v_y | a `Preview`: valid or why not, the orbit, whether it reaches r = 2 |
+| `Simulation.check_start`, `.remove_particle` | `simulation/model.py` | a starting state; a particle number | the checked state or ValueError; removes it or KeyError |
+| `BlackHoleView.particle_index_at` | `ui/viewport.py` | a map point | the particle within 12 px, or None |
 | `SimulationRunner.tick` | `ui/simulation_runner.py` | nothing (reads the clock) | advances by speed × real time, within the frame budget |
 
 `format_length_auto` without its docstring, as an example of a rule written as code:
@@ -638,6 +683,9 @@ Only connections that are real are listed here.
   everything. Embedded control loops and audio buffers are designed around the same budget.
 - **Interpolation between samples (1D-1).** Dense output is reconstruction between samples, like a
   DAC's reconstruction filter: the solver's steps are the samples, the polynomial fills in between.
+- **Auto-ranging input (1D-2).** The arrow-to-velocity rule scales the input with the distance, as an
+  auto-ranging multimeter changes range with the signal, so the same hand movement is useful near the
+  black hole and far from it.
 - **Not built yet.** Time dilation as a frequency shift, signal paths along light rays, spectra and
   link budgets come in Stages 3 and 5.
 
@@ -705,13 +753,20 @@ Predict first, then start the program with `.venv\Scripts\python.exe -m bhlab` a
     about 2 seconds on screen.
 20. `python -m bhlab.orbit --x 10 --vy 0 --duration 100 --stop-radius 1e-12`. Prediction: an error
     saying the solver failed at t ≈ 35.12, the time to reach the centre (section 2.13), and exit code 1.
+21. Switch on Place and drag from (8, 0) straight up to (8, 8). Prediction: the preview reads about
+    1.000 × circular and e close to 0 (your hand is not exact to a pixel).
+22. Drag from (8, 0) up to (8, 5). Prediction: e ≈ 0.61 and a warning that it will reach r = 2
+    (section 2.16). Release, press Play and watch it stop on the horizon.
+23. Drag straight outward from (8, 0) to (14, 0). Prediction: v = 6 / 8^1.5 = 0.265 c, below the escape
+    speed √(2/8) = 0.5 c, so the particle rises, stops, falls straight back and is stopped at r = 2.
+    The preview says "Bound orbit, e = 1.000" and warns before you release. Then try (8, 0) to (25, 0).
 
 ## 7. To study next
 
-Before Checkpoint 1D-2 (placing particles with the mouse):
+Before Checkpoint 1E (trails and live measurements):
 
-- Mouse events in pyqtgraph: turning a click and drag into a position and a velocity.
-- Hit testing: deciding which drawn particle a click belongs to, so it can be selected or removed.
+- Ring buffers: keeping the last N positions of each particle for a trail without the memory growing.
+- How a plot redraws efficiently many times a second (pyqtgraph's `setData`).
 
 Further ahead, for Stage 2: the idea of a metric, proper time against coordinate time, and the
 effective potential of an orbit.

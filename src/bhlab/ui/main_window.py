@@ -5,7 +5,7 @@ import time
 from collections.abc import Callable, Sequence
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QCloseEvent
+from PySide6.QtGui import QCloseEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QDockWidget,
     QFrame,
@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 from bhlab import __version__
 from bhlab.formatting import format_length_auto, format_number
 from bhlab.simulation.model import Particle, Simulation
+from bhlab.simulation.placement import Preview, drag_velocity, preview
 from bhlab.ui.mass_controls import MassControls
 from bhlab.ui.particle_form import ParticleForm
 from bhlab.ui.run_controls import RunControls
@@ -67,6 +68,32 @@ def describe_particles(particles: Sequence[Particle], stop_radius: float) -> str
         f"r = {stop_radius:g} GM/c². Newtonian gravity has no horizon: the stop only marks "
         "where this model ends."
     )
+
+
+def describe_preview(placement: Preview, stop_radius: float) -> str:
+    """What a particle with the previewed starting state would do, in a sentence or two."""
+    if placement.error is not None:
+        return placement.error
+    elements = placement.elements
+    assert elements is not None  # a valid preview always has its orbit
+    start = (
+        f"r = {format_number(math.hypot(placement.x, placement.y))}, speed "
+        f"{format_number(placement.speed)} c ({format_number(placement.speed_over_circular)} × "
+        "circular). "
+    )
+    periapsis = f"periapsis {format_number(elements.periapsis)} GM/c²"
+    if elements.kind == "bound":
+        orbit = (
+            f"Bound orbit, e = {format_number(elements.eccentricity)}, {periapsis}, apoapsis "
+            f"{format_number(elements.apoapsis)} GM/c²."
+        )
+    elif elements.kind == "parabolic":
+        orbit = f"Parabolic: it only just escapes, {periapsis}."
+    else:
+        orbit = f"Unbound: it escapes, e = {format_number(elements.eccentricity)}, {periapsis}."
+    if placement.reaches_stop_radius:
+        orbit += f" It will come down to r = {stop_radius:g} and stop there."
+    return start + orbit
 
 
 def _side_panel(object_name: str, width: int, *sections: QWidget) -> QScrollArea:
@@ -168,6 +195,16 @@ class MainWindow(QMainWindow):
         self.runner.running_changed.connect(self.run_controls.set_running)
         self.runner.changed.connect(self._show_simulation)
         self.particle_form.add_requested.connect(self._on_add_requested)
+        self.particle_form.remove_requested.connect(self._remove_selected)
+        self.view.placement_moved.connect(self._on_placement_moved)
+        self.view.placement_finished.connect(self._on_placement_finished)
+        self.view.map_clicked.connect(self._on_map_clicked)
+        # A line edit with the focus keeps Delete for its own text; elsewhere it removes.
+        self.delete_shortcut = QShortcut(QKeySequence(Qt.Key.Key_Delete), self)
+        self.delete_shortcut.activated.connect(self._remove_selected)
+
+        self._selected_id: int | None = None
+        self._shown_ids: tuple[int, ...] = ()
 
         self._show_simulation()
 
@@ -175,6 +212,11 @@ class MainWindow(QMainWindow):
     def black_hole(self) -> BlackHole:
         """The black hole currently shown."""
         return self._black_hole
+
+    @property
+    def selected_id(self) -> int | None:
+        """The number of the selected particle, or None."""
+        return self._selected_id
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.runner.set_running(False)  # no timer may outlive the window
@@ -214,13 +256,85 @@ class MainWindow(QMainWindow):
         )
         self._show_simulation()
 
+    def _placement_preview(self, x: float, y: float, dx: float, dy: float) -> Preview:
+        try:
+            vx, vy = drag_velocity(x, y, dx, dy)
+        except ValueError as error:  # pressed exactly on r = 0
+            return Preview(x, y, 0.0, 0.0, str(error), None, False)
+        return preview(self.simulation, x, y, vx, vy)
+
+    def _on_placement_moved(self, x: float, y: float, dx: float, dy: float) -> None:
+        placement = self._placement_preview(x, y, dx, dy)
+        self.view.set_placement_valid(placement.is_valid)
+        text = describe_preview(placement, self.simulation.stop_radius)
+        if placement.is_valid:
+            self.particle_form.show_info(text)
+        else:
+            self.particle_form.show_error(text)
+
+    def _on_placement_finished(self, x: float, y: float, dx: float, dy: float) -> None:
+        placement = self._placement_preview(x, y, dx, dy)
+        if not placement.is_valid:
+            self.particle_form.show_error(
+                f"Nothing added. {describe_preview(placement, self.simulation.stop_radius)}"
+            )
+            return
+        particle = self.simulation.add_particle(x, y, placement.vx, placement.vy)
+        self.particle_form.set_fields(x, y, placement.vx, placement.vy)
+        self.particle_form.show_info(
+            f"Added particle {particle.id + 1}. "
+            f"{describe_preview(placement, self.simulation.stop_radius)}"
+        )
+        self._show_simulation()
+
+    def _on_map_clicked(self, x: float, y: float) -> None:
+        if self.view.place_mode:
+            self.particle_form.show_info(
+                "Place mode: press where the particle should start and drag an arrow for its "
+                "velocity. A click alone adds nothing."
+            )
+            return
+        index = self.view.particle_index_at(x, y)
+        self._select(None if index is None else self._shown_ids[index])
+
+    def _select(self, particle_id: int | None) -> None:
+        self._selected_id = particle_id
+        self.particle_form.set_remove_enabled(particle_id is not None)
+        if particle_id is not None:
+            particle = next(p for p in self.simulation.particles if p.id == particle_id)
+            x, y, vx, vy = (float(value) for value in particle.state)
+            self.particle_form.set_fields(x, y, vx, vy)
+            state = "stopped" if particle.is_stopped else "now"
+            self.particle_form.show_info(
+                f"Particle {particle_id + 1} selected; the fields show its state {state}. "
+                "Remove it with Remove or Delete."
+            )
+        self._show_simulation()
+
+    def _remove_selected(self) -> None:
+        if self._selected_id is None:
+            return
+        removed = self._selected_id
+        self.simulation.remove_particle(removed)
+        self._selected_id = None
+        self.particle_form.set_remove_enabled(False)
+        self.particle_form.show_info(f"Removed particle {removed + 1}.")
+        self._show_simulation()
+
     def _show_simulation(self) -> None:
         """Bring the map, the clock and the particle summary up to date with the simulation."""
         particles = self.simulation.particles
+        self._shown_ids = tuple(particle.id for particle in particles)
+        selected = (
+            self._shown_ids.index(self._selected_id)
+            if self._selected_id in self._shown_ids
+            else None
+        )
         self.view.set_particles(
             [(particle.state[0], particle.state[1]) for particle in particles],
             [particle_colour(particle.id) for particle in particles],
             [particle.is_stopped for particle in particles],
+            selected,
         )
         self.run_controls.set_time(self.simulation.time)
         self.run_controls.set_behind(self.runner.is_behind)

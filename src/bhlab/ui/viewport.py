@@ -4,13 +4,19 @@ The view is a map of the orbital plane seen from above, drawn in units of the gr
 radius r_g = GM/c². Every length of the problem is proportional to the mass, so the picture is
 the same for every black hole; only the physical size shown by the scale bar changes.
 
+The left mouse button pans the map, or, in place mode, drags out a new particle: press where
+it should start and drag an arrow for its velocity (the rule that turns the arrow into a
+velocity is in :mod:`bhlab.simulation.placement`). A click without dragging selects the particle
+under the cursor. The view itself only reports these gestures in map coordinates; the window
+decides what they mean.
+
 What the map is not: a picture of what a camera would record. It shows Schwarzschild
 coordinates, in which a circle of radius r has circumference 2πr. Light bending, which makes
 the black hole's shadow look about 2.6 times larger than its horizon, belongs to a later stage.
 """
 
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -27,13 +33,15 @@ from PySide6.QtWidgets import (
 )
 
 from bhlab.ui.scale_bar import ScaleBar
-from bhlab.ui.theme import BACKGROUND, BLUE, BORDER, MUTED, ORANGE, PURPLE
+from bhlab.ui.theme import BACKGROUND, BLUE, BORDER, ERROR, MUTED, ORANGE, PURPLE, TEXT
 from bhlab.units import HORIZON_RADIUS_RG, ISCO_RADIUS_RG, PHOTON_SPHERE_RADIUS_RG, BlackHole
 
 _HORIZON_LABEL_WIDTH = 88.0  # pixels; the label is centred inside the disc
 
 _PARTICLE_SIZE = 10  # pixels across a particle's dot
 _STOPPED_SIZE = 12  # pixels across the cross that marks a stopped particle
+_SELECTION_SIZE = 22  # pixels across the ring around the selected particle
+_ARROW_HEAD_PIXELS = 12.0  # length of each side of the arrowhead on screen
 
 # The longest label the y axis can show. Within the zoom and pan limits of this view, pyqtgraph
 # never prints more than a sign, six digits and a decimal point (tests/test_viewport.py checks).
@@ -90,6 +98,51 @@ ISCO = ReferenceCircle(
 REFERENCE_CIRCLES: tuple[ReferenceCircle, ...] = (EVENT_HORIZON, PHOTON_SPHERE, ISCO)
 
 
+MapPoint = tuple[float, float]
+
+
+class _MapViewBox(pg.ViewBox):
+    """pyqtgraph's view box, with the left button's drag and click handed over when asked.
+
+    ``drag_handler`` receives (start, current, finished) in map coordinates. While it is None
+    the left button pans as usual. ``click_handler`` receives the clicked map point. The mouse
+    wheel always zooms.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.drag_handler: Callable[[MapPoint, MapPoint, bool], None] | None = None
+        self.click_handler: Callable[[MapPoint], None] | None = None
+
+    def _map(self, position: QPointF) -> MapPoint:
+        point = self.mapToView(position)
+        return point.x(), point.y()
+
+    def mouseDragEvent(self, ev, axis=None) -> None:
+        if self.drag_handler is None or ev.button() != Qt.MouseButton.LeftButton:
+            super().mouseDragEvent(ev, axis)
+            return
+        ev.accept()
+        start = self._map(ev.buttonDownPos(Qt.MouseButton.LeftButton))
+        self.drag_handler(start, self._map(ev.pos()), ev.isFinish())
+
+    def mouseClickEvent(self, ev) -> None:
+        if self.click_handler is not None and ev.button() == Qt.MouseButton.LeftButton:
+            ev.accept()
+            self.click_handler(self._map(ev.pos()))
+            return
+        super().mouseClickEvent(ev)
+
+
+class _Marks(pg.ScatterPlotItem):
+    """Dots that only show things. pyqtgraph's scatter item takes a click on one of its dots for
+    itself, so the map would never hear of it; these pass every click on to the map, which does
+    its own hit test (:meth:`BlackHoleView.particle_index_at`)."""
+
+    def mouseClickEvent(self, ev) -> None:
+        ev.ignore()
+
+
 class _PlotWidget(pg.PlotWidget):
     """A plot widget that also reports when the mouse leaves it."""
 
@@ -103,8 +156,9 @@ class _PlotWidget(pg.PlotWidget):
 class BlackHoleView(QWidget):
     """Top-down map of the black hole with pan, zoom, reference circles and a scale bar.
 
-    Drag with the left mouse button to pan and turn the wheel to zoom about the cursor.
-    Positions are in units of r_g; the aspect ratio is locked, so circles stay circles.
+    Drag with the left mouse button to pan and turn the wheel to zoom about the cursor. In place
+    mode the left button drags out a particle instead. Positions are in units of r_g; the aspect
+    ratio is locked, so circles stay circles.
     """
 
     cursor_moved = Signal(float, float)
@@ -112,6 +166,20 @@ class BlackHoleView(QWidget):
 
     cursor_left = Signal()
     """Emitted when the cursor leaves the map."""
+
+    place_mode_changed = Signal(bool)
+    """Emitted when place mode is switched on or off."""
+
+    placement_moved = Signal(float, float, float, float)
+    """While dragging in place mode: the start (x, y) and the arrow (dₓ, d_y), in r_g."""
+
+    placement_finished = Signal(float, float, float, float)
+    """When the button is released after dragging in place mode: start and arrow, in r_g."""
+
+    map_clicked = Signal(float, float)
+    """A left click without dragging, at the map point (x, y)."""
+
+    HIT_PIXELS = 12.0  # a click this close to a particle, on screen, selects it
 
     DEFAULT_HALF_EXTENT = 10.0  # r_g from the centre to the nearer edge after a reset
     ZOOM_STEP = 1.5  # factor applied by one click on a zoom button
@@ -145,6 +213,14 @@ class BlackHoleView(QWidget):
         self.zoom_out_button.clicked.connect(lambda: self.zoom_by(1.0 / self.ZOOM_STEP))
         self.zoom_in_button.clicked.connect(lambda: self.zoom_by(self.ZOOM_STEP))
         self.reset_button.clicked.connect(self.reset_view)
+        self.place_button = self._camera_button(
+            "Place",
+            "Place mode: press where a particle should start and drag an arrow for its velocity. "
+            "An arrow as long as the distance to the black hole, drawn sideways, gives a circular "
+            "orbit. The mouse wheel still zooms; switch Place off to pan again.",
+        )
+        self.place_button.setCheckable(True)
+        self.place_button.toggled.connect(self.set_place_mode)
 
         header = QHBoxLayout()
         header.setContentsMargins(18, 14, 14, 6)
@@ -152,12 +228,15 @@ class BlackHoleView(QWidget):
         header.addWidget(title)
         header.addWidget(caption)
         header.addStretch(1)
+        header.addWidget(self.place_button)
+        header.addSpacing(8)
         header.addWidget(self.zoom_out_button)
         header.addWidget(self.zoom_in_button)
         header.addWidget(self.reset_button)
 
         # --- the map --------------------------------------------------------------------
-        self.plot = _PlotWidget(background=BACKGROUND)
+        self._view_box = _MapViewBox()
+        self.plot = _PlotWidget(background=BACKGROUND, viewBox=self._view_box)
         self.plot.setAntialiasing(True)
         self.plot_item = self.plot.getPlotItem()
         self.view_box = self.plot_item.getViewBox()
@@ -204,9 +283,22 @@ class BlackHoleView(QWidget):
         # Particles: dots of a fixed size on screen, drawn above everything else on the map.
         self._particle_points: tuple[tuple[float, float], ...] = ()
         self._particle_stopped: tuple[bool, ...] = ()
-        self._particles = pg.ScatterPlotItem(pxMode=True)
+        self._particles = _Marks(pxMode=True)
         self._particles.setZValue(20)
         self.plot_item.addItem(self._particles, ignoreBounds=True)
+        self._selected: int | None = None
+        self._selection = _Marks(pxMode=True)
+        self._selection.setZValue(19)
+        self.plot_item.addItem(self._selection, ignoreBounds=True)
+
+        # The arrow being dragged out in place mode: shaft and head as one line with gaps.
+        self._arrow = pg.PlotDataItem(connect="finite")
+        self._arrow.setZValue(30)
+        self._arrow.hide()
+        self.plot_item.addItem(self._arrow, ignoreBounds=True)
+        self._arrow_valid = True
+        self._dragging = False
+        self._view_box.click_handler = lambda point: self.map_clicked.emit(*point)
 
         self.scale_bar = ScaleBar(self.plot)
 
@@ -250,6 +342,41 @@ class BlackHoleView(QWidget):
         except (TypeError, AttributeError):  # pyqtgraph has no transform before first layout
             return None
         return 1.0 / pixel_width if pixel_width > 0.0 else None
+
+    # --- place mode ---------------------------------------------------------------------
+
+    @property
+    def place_mode(self) -> bool:
+        """Whether the left mouse button places particles instead of panning."""
+        return self._view_box.drag_handler is not None
+
+    def set_place_mode(self, on: bool) -> None:
+        """Switch place mode on or off. Switching it off ends a drag without placing anything."""
+        if on == self.place_mode:
+            return
+        self._view_box.drag_handler = self._on_place_drag if on else None
+        self.plot.setCursor(Qt.CursorShape.CrossCursor if on else Qt.CursorShape.ArrowCursor)
+        if not on:
+            self._dragging = False
+            self._arrow.hide()
+        self.place_button.setChecked(on)
+        self.place_mode_changed.emit(on)
+
+    def set_placement_valid(self, valid: bool) -> None:
+        """Colour the arrow being dragged: blue if it would make a valid particle, red if not."""
+        self._arrow_valid = valid
+        self._arrow.setPen(pg.mkPen(BLUE if valid else ERROR, width=2))
+
+    def arrow_points(self) -> tuple[MapPoint, MapPoint] | None:
+        """The start and tip of the arrow on display, or None when there is none."""
+        if not self._arrow.isVisible():
+            return None
+        xs, ys = self._arrow.getData()
+        return (float(xs[0]), float(ys[0])), (float(xs[1]), float(ys[1]))
+
+    def arrow_valid(self) -> bool:
+        """Whether the arrow on display is drawn as valid."""
+        return self._arrow_valid
 
     # --- content ------------------------------------------------------------------------
 
@@ -295,8 +422,11 @@ class BlackHoleView(QWidget):
         positions: Sequence[tuple[float, float]],
         colours: Sequence[str],
         stopped: Sequence[bool],
+        selected: int | None = None,
     ) -> None:
         """Draw one mark per particle at ``positions``, in units of r_g.
+
+        ``selected`` is the index of the particle to ring, or None.
 
         A moving particle is a dot in its colour; a stopped one is a cross in the same colour,
         so that its state does not depend on colour alone. Each dot has a thin ring in the
@@ -304,8 +434,21 @@ class BlackHoleView(QWidget):
         """
         if not (len(positions) == len(colours) == len(stopped)):
             raise ValueError("positions, colours and stopped must have one entry per particle")
+        if selected is not None and not 0 <= selected < len(positions):
+            raise ValueError(f"selected must index one of the particles; got {selected!r}")
         self._particle_points = tuple((float(x), float(y)) for x, y in positions)
         self._particle_stopped = tuple(bool(flag) for flag in stopped)
+        self._selected = selected
+        if selected is None:
+            self._selection.clear()
+        else:
+            self._selection.setData(
+                pos=np.array([self._particle_points[selected]]),
+                symbol="o",
+                size=_SELECTION_SIZE,
+                brush=pg.mkBrush(None),
+                pen=pg.mkPen(TEXT, width=2),
+            )
         if not self._particle_points:
             self._particles.clear()
             return
@@ -330,6 +473,21 @@ class BlackHoleView(QWidget):
     def particle_stopped(self) -> tuple[bool, ...]:
         """For each particle drawn, whether it is drawn as stopped."""
         return self._particle_stopped
+
+    def selected_index(self) -> int | None:
+        """The index of the particle drawn with a selection ring, or None."""
+        return self._selected
+
+    def particle_index_at(self, x: float, y: float) -> int | None:
+        """The particle drawn nearest to the map point (x, y), if within HIT_PIXELS on screen."""
+        pixels_per_unit = self.pixels_per_unit()
+        if pixels_per_unit is None or not self._particle_points:
+            return None
+        distances = [
+            math.hypot(px - x, py - y) * pixels_per_unit for px, py in self._particle_points
+        ]
+        nearest = min(range(len(distances)), key=distances.__getitem__)
+        return nearest if distances[nearest] <= self.HIT_PIXELS else None
 
     # --- internals ----------------------------------------------------------------------
 
@@ -384,6 +542,36 @@ class BlackHoleView(QWidget):
             self._labels[circle.key].setVisible(
                 self._visible[circle.key] and pixels_per_unit >= circle.min_pixels_per_unit
             )
+
+    def _on_place_drag(self, start: MapPoint, current: MapPoint, finished: bool) -> None:
+        (x, y), (tip_x, tip_y) = start, current
+        dx, dy = tip_x - x, tip_y - y
+        if finished:
+            self._dragging = False
+            self._arrow.hide()
+            self.placement_finished.emit(x, y, dx, dy)
+            return
+        self._dragging = True
+        self._draw_arrow(start, current)
+        self.placement_moved.emit(x, y, dx, dy)
+
+    def _draw_arrow(self, start: MapPoint, tip: MapPoint) -> None:
+        (x0, y0), (x1, y1) = start, tip
+        xs, ys = [x0, x1], [y0, y1]
+        length = math.hypot(x1 - x0, y1 - y0)
+        pixels_per_unit = self.pixels_per_unit()
+        if length > 0.0 and pixels_per_unit:
+            head = _ARROW_HEAD_PIXELS / pixels_per_unit
+            ux, uy = (x1 - x0) / length, (y1 - y0) / length
+            for side in (+1.0, -1.0):  # two strokes at ±25° to the shaft
+                angle = math.radians(25.0) * side
+                bx = -(ux * math.cos(angle) - uy * math.sin(angle)) * head
+                by = -(ux * math.sin(angle) + uy * math.cos(angle)) * head
+                xs += [math.nan, x1 + bx, x1]
+                ys += [math.nan, y1 + by, y1]
+        self._arrow.setData(xs, ys)
+        self._arrow.setPen(pg.mkPen(BLUE if self._arrow_valid else ERROR, width=2))
+        self._arrow.show()
 
     def _on_scene_mouse_moved(self, scene_position: QPointF) -> None:
         if self.view_box.sceneBoundingRect().contains(scene_position):

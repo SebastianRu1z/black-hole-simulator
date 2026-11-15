@@ -1,7 +1,7 @@
 # Black Hole Physics Lab — Project Progress
 
 Last updated: 2026-11-15. Checkpoints 1A, 1B, 1C and 1D-1 are approved and merged into `main` (only 1A is
-pushed). Checkpoint 1D-2 has been proposed and is not approved.
+pushed). Checkpoint 1D-2 is built on branch `checkpoint-1d2` and awaits approval.
 
 This file is the single source of truth for where the project stands.
 **Read it first in every new session, then inspect the code. Do not rebuild or overwrite existing work.**
@@ -32,11 +32,11 @@ This file is the single source of truth for where the project stands.
 | Item | State |
 |---|---|
 | Current stage | Stage 1 — working interactive simulation foundation (Newtonian) |
-| Last completed checkpoint | **1D-1 — simulation loop, run controls, particles entered as numbers** (built 2026-11-13, finished 2026-11-14 with the review fixes) |
+| Last completed checkpoint | **1D-2 — placing particles with the mouse, selecting and removing them** (built 2026-11-15, awaiting approval) |
 | Last approved checkpoint | **1D-1** (approved by Sebastian on 2026-11-15). 1C-2 approved on 2026-11-13; 1A, 1B and 1C-1 on 2026-11-12 |
-| Checkpoint in progress | None. |
-| Next step | Sebastian decides on the 1D-2 plan proposed on 2026-11-15 (placing particles with the mouse, selecting and removing them). No 1D-2 code before an explicit yes; then branch `checkpoint-1d2` from `main`. |
-| Automated tests | 411 passed, 0 failed on `main` after merging 1D-1 (pytest 9.2.0, Python 3.14.7, 2026-11-15). `ruff check` and `ruff format --check` clean. |
+| Checkpoint in progress | None. 1D-2 is complete on `checkpoint-1d2` and reported; not merged into `main`. |
+| Next step | Sebastian approves 1D-2 (then merge `checkpoint-1d2` into `main`) and decides on 1E: orbital trails, predicted path, selected-object panel, unit switching. No 1E code before an explicit yes. |
+| Automated tests | 448 passed, 0 failed on `checkpoint-1d2` (pytest 9.2.0, Python 3.14.7, 2026-11-15); 411 on `main`. `ruff check` and `ruff format --check` clean. |
 | Git | 1A (commit `ccea74b`) is merged into `main`. Each later checkpoint is built on its own branch and merged after approval. 1B (`7e9526b`, `e51d367` by Sebastian, and the completing commit) was merged into `main` locally on 2026-11-12 after Sebastian's approval. Branch `checkpoint-1c` was created from `main` (at `50b8baa`) after Sebastian approved starting 1C-1. 1C-1 and 1C-2 were committed there and, after Sebastian approved 1C-2 on 2026-11-13, merged into `main` locally. |
 | GitHub | Remote `origin` is `SebastianRu1z/black-hole-simulator`, created by Sebastian. On 2026-11-12 Sebastian asked for the approved 1A work to be pushed to it; `main` was pushed at commit `d903597`. Push `main` only when Sebastian asks; never push an unapproved checkpoint. Visibility not checked. On 2026-11-12 Sebastian also published `checkpoint-1b` himself, at `e51d367`. The approved 1B work on `main` and the completing commit on `checkpoint-1b` are not pushed: push only when Sebastian asks. |
 
@@ -52,6 +52,15 @@ This file is the single source of truth for where the project stands.
 | `bhlab.ui` | PySide6 window: mass by text field (applied with Enter), logarithmic slider (1 to 10¹¹ M☉) or preset; live table of six characteristic scales with formulas and tooltips; invalid input is reported and never applied |
 | `bhlab.ui.viewport`, `bhlab.ui.scale_bar`, `bhlab.ui.view_options` (1B) | pyqtgraph map of the orbital plane in units of r_g: horizon disc, photon-sphere and ISCO circles with labels that hide when zoomed out, grid, drag to pan, wheel zoom about the cursor, zoom buttons, reset, zoom and pan limits, scale bar in r_g and in km, AU or light-years, cursor readout (x, y, r, φ) in the status bar, check boxes for the circles and the grid. The scales table sits in a right-hand panel |
 | `python -m bhlab` | opens the window |
+
+### Checkpoint 1D-2 (on `checkpoint-1d2`, awaiting approval)
+
+| Module | What it does |
+|---|---|
+| `bhlab.simulation.placement` | `drag_velocity`: v = d / r^(3/2) (a sideways arrow of length r gives the circular orbit); `preview`: the orbit a start would give, or why it is refused, and whether it comes down to r = 2 |
+| `bhlab.simulation.model` (extended) | `check_start` shared by `add_particle` and the preview; `remove_particle`; particle numbers are never reused |
+| `bhlab.ui.viewport` (extended) | Place button; `_MapViewBox` hands the left drag and click to the view in place mode, wheel zoom unchanged; blue or red arrow with head; selection ring; `particle_index_at` (12 px); `_Marks` stops dots from swallowing clicks |
+| `bhlab.ui.main_window`, `bhlab.ui.particle_form` (extended) | live preview text while dragging, add on release, select by click, Remove button and Delete key (a text field keeps Delete for itself), fields filled with the placed or selected state |
 
 ### Checkpoint 1D-1 (approved 2026-11-15)
 
@@ -167,7 +176,7 @@ the verification matrix below (§36), and references that are checked before the
 | 1A | Project skeleton, units module, application window | package `bhlab`, tested constants/units/formatting modules, PySide6 window showing live characteristic scales for a chosen mass, pytest and ruff wired up | **approved 2026-11-12** |
 | 1B | 2D black hole view and camera | pyqtgraph viewport: horizon disc, photon-sphere and ISCO circles (labelled as GR reference radii the Newtonian engine does not use), scale bar, pan/zoom/reset, cursor readout; the scales table moves to a side panel | **approved 2026-11-12** |
 | 1C | Newtonian physics engine (headless) | test-particle equations of motion about a point mass; velocity Verlet, RK4, SciPy DOP853 with event detection; orbital elements; pytest checks against Kepler; command-line run | split on 2026-11-12. **1C-1** (equations of motion, RK4, velocity Verlet, Kepler and convergence tests): **approved 2026-11-12**. **1C-2** (DOP853 with events, orbital elements, command-line run): **approved 2026-11-13** |
-| 1D | Particle placement and run controls | click-and-drag placement with a velocity vector, exact numeric inputs, rejection of invalid initial conditions, multiple particles, play/pause/reset/single-step/speed with physics decoupled from frame rate | split: **1D-1** (simulation loop, run controls, numeric input): **approved 2026-11-15**. **1D-2** (mouse placement, selection, removal): not started |
+| 1D | Particle placement and run controls | click-and-drag placement with a velocity vector, exact numeric inputs, rejection of invalid initial conditions, multiple particles, play/pause/reset/single-step/speed with physics decoupled from frame rate | split: **1D-1** (simulation loop, run controls, numeric input): **approved 2026-11-15**. **1D-2** (mouse placement, selection, removal): built 2026-11-15, awaiting approval |
 | 1E | Trails and live measurements | orbital trails, predicted path, selected-object panel (r, v, E, L, e, a, T, periapsis, apoapsis, status), unit switching, warning where the Newtonian model stops being trustworthy | not started |
 | 1F | Validation dashboard, plots, export, Stage 1 docs | conservation-error plots, solver comparison and convergence study, CSV/JSON/PNG export, Newtonian parts of README/PHYSICS/NUMERICAL_METHODS/VALIDATION | not started |
 
@@ -285,6 +294,7 @@ No security findings. Not audited: interface code, performance, dependencies, do
 | Adaptive integration (DOP853) and events | `bhlab.solvers.adaptive` (1C-2) | SciPy `solve_ivp` with DOP853; events as zero crossings of r·v and r − R | 27 pytest tests, plus 12 for the command line | periapsis and apoapsis at k·T and (k + ½)·T to 1e-8; crossing of r = 100 at 1070.80 from Kepler's equation to 1e-9; free fall from r = 10 stops at r = 2 at the analytic 33.70 to 1e-9; custom event at T/4 on a circle | end error falls monotonically as rtol tightens (1.5e-4 to 1.7e-9 for rtol 1e-6 to 1e-12); at e = 0.9 an end error of 1.1e-6 with 1334 evaluations, against about 0.03 for RK4 with 10 000 | yes (module docstring; not symplectic; tolerance is per step) |
 | Plunge handling: stop at a radius, failure at r = 0 | `solvers.adaptive`, `solvers.fixed_step`, `orbit` (review fix) | stop radius r = 2; `IntegrationError` | 21 pytest tests | fall from rest at r = 10 stops at the analytic 33.70 (adaptive, to 1e-9; fixed step, within one step); failure at the analytic time to the centre, (π/2)√(r₀³/2) = 35.12, to 1e-3 | not applicable | yes (module docstrings, learning notes 2.15) |
 | Simulation clock and real-time playback | `simulation.model`, `ui.simulation_runner` (1D-1) | one clock, least-advanced stepping, dense output, speed × Δt | 42 simulation, 14 stepper, 39 interface tests | positions after the same simulated time agree at any frame rate; free fall stops at r = 2 at 33.70; a circular orbit returns after one Kepler period | not applicable | yes (module docstrings) |
+| Placement rule and orbit preview | `simulation.placement` (1D-2) | v = d / r^(3/2); reaches r = 2 if periapsis ≤ 2 and (bound or r·v < 0) | 17 pytest tests, plus 20 window tests driven with the mouse | sideways arrow of length r gives v = √(1/r) and e = 0 to 1e-12 (r = 3, 10, 250); √2 r gives E = 0 to 1e-15; v at (3, 4) equals d·5^(−3/2); periapsis/apoapsis 50/150 for the a = 100 ellipse; preview refusals match `add_particle` | not applicable | yes (module docstring, learning notes 2.16) |
 | Schwarzschild timelike geodesics | prototype script | yes | script self-test, 6 checks (not pytest) | circular-orbit period (0.01 %), weak-field precession (within 2 %), capture inside ISCO | none | partly, in docstring |
 | Schwarzschild null geodesics and thin-disc image | prototype script | yes | none | none (visual check only) | none | partly, in docstring |
 | Kerr, RF link, DSP, interferometry, curved-spacetime EM, research extensions | not started | — | — | — | — | — |
@@ -293,7 +303,8 @@ No model in this project may be described as validated or research-grade until i
 
 Test suite breakdown (2026-11-14, `checkpoint-1d`): constants 6, units 40, formatting 41, architecture 1, interface 38,
 map 62, Newtonian physics 26, fixed-step solvers 43, orbital elements 14, adaptive solver 29, stepper 14, command
-line 16, simulation 42, simulation interface 39. Total 411.
+line 16, simulation 42, simulation interface 39, placement 17 (1D-2), placement interface 20 (1D-2). Total 448.
+(The breakdown above the 1D-2 entries is for 2026-11-14.)
 
 ## Known issues and limitations
 
@@ -342,6 +353,15 @@ Checkpoint 1C-2:
 
 Checkpoint 1D-1:
 - Particles leave no trail yet (1E), so one that leaves the view is simply gone from sight.
+
+Checkpoint 1D-2:
+- A placed particle starts where the mouse was pressed, so its coordinates carry pixel noise
+  (7.005884389 rather than 7). Type the numbers in the form when exact values matter.
+- Whether the buttons fit their panel can only be checked by eye: the tests' offscreen platform has no
+  fonts. Checked in the real window, off screen, at 1440 × 800 and 125 % scaling.
+- pyqtgraph ignores mouse moves that arrive faster than 100 per second. The release always carries the
+  final position, so placement is exact; only the arrow drawn during very fast drags may lag a frame.
+- There is no Escape to cancel a drag: release over an invalid spot, or switch Place off.
 - Only seen off screen at one size and scaling; Sebastian has not yet judged it on his own screen.
 
 Prototypes:
@@ -416,6 +436,8 @@ Claude Code's own `/code-review`, `/security-review` and `/simplify` are availab
   2026-11-13 session had left uncommitted and unrecorded. Session model: Opus 5.5.
 - 2026-11-15 — Sebastian approved Checkpoint 1D-1. `checkpoint-1d` was merged into `main` locally, not
   pushed. The understanding-check questions were not answered.
+- 2026-11-15 — Sebastian approved starting Checkpoint 1D-2 as proposed (Place mode, v = d / r^(3/2),
+  selection and removal). Built on `checkpoint-1d2` with Opus 5.5.
 
 ## How to resume in a new session
 

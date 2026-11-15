@@ -1,4 +1,5 @@
-"""Right-hand panel section: adding a particle by typing its starting position and velocity.
+"""Left-hand panel section: adding a particle by typing its starting position and velocity,
+and removing the selected one.
 
 The form only reads numbers. Whether they make a valid particle (outside the stop radius,
 slower than light) is decided by the simulation, and its answer is shown here.
@@ -23,7 +24,7 @@ from bhlab.ui.theme import set_style_flag
 
 _HELP_TEXT = (
     "Position in GM/c², velocity as a fraction of c. “Circular speed” fills in the velocity "
-    "of the circular orbit through the position."
+    "of the circular orbit through the position. Or switch on Place above the map and drag."
 )
 
 
@@ -67,6 +68,9 @@ class ParticleForm(QWidget):
     add_requested = Signal(float, float, float, float)
     """Emitted with (x, y, vₓ, v_y) when the user asks for a particle and all four are numbers."""
 
+    remove_requested = Signal()
+    """Emitted when the user asks to remove the selected particle."""
+
     FIELDS = ("x", "y", "vx", "vy")
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -105,11 +109,20 @@ class ParticleForm(QWidget):
             "Fill in the velocity of the anticlockwise circular orbit through (x, y): v = √(1/r)",
         )
         self.add_button = self._button("Add particle", "Add a particle that starts now")
+        self.remove_button = self._button(
+            "Remove",
+            "Remove the selected particle (or press Delete). Click a particle to select it.",
+        )
+        self.remove_button.setEnabled(False)
         buttons = QHBoxLayout()
         buttons.setSpacing(8)
         buttons.addWidget(self.circular_button)
         buttons.addWidget(self.add_button)
         buttons.addStretch(1)
+        # A third button in the same row would not fit the panel's width without clipping.
+        remove_row = QHBoxLayout()
+        remove_row.addWidget(self.remove_button)
+        remove_row.addStretch(1)
 
         # One line of help that turns into the error message, as for the mass.
         self._error = ""
@@ -130,11 +143,13 @@ class ParticleForm(QWidget):
         layout.addSpacing(2)
         layout.addLayout(grid)
         layout.addLayout(buttons)
+        layout.addLayout(remove_row)
         layout.addWidget(self.message_label)
         layout.addWidget(self.summary_label)
 
         self.circular_button.clicked.connect(self._on_circular_clicked)
         self.add_button.clicked.connect(self._on_add_clicked)
+        self.remove_button.clicked.connect(self.remove_requested)
 
     # --- public interface ---------------------------------------------------------------
 
@@ -149,6 +164,17 @@ class ParticleForm(QWidget):
     def show_info(self, message: str) -> None:
         """Show ``message`` as information, replacing any error."""
         self._show(message, error=False)
+
+    def set_fields(self, x: float, y: float, vx: float, vy: float) -> None:
+        """Fill the four fields, for example with a particle placed or selected on the map."""
+        for name, value in zip(self.FIELDS, (x, y, vx, vy), strict=True):
+            self.edits[name].setText(number_to_text(value))
+            self.edits[name].setCursorPosition(0)  # show the leading digits of a long number
+            set_style_flag(self.edits[name], "invalid", False)
+
+    def set_remove_enabled(self, enabled: bool) -> None:
+        """Enable the Remove button while a particle is selected."""
+        self.remove_button.setEnabled(enabled)
 
     def set_summary(self, text: str) -> None:
         """Show ``text`` under the form: how many particles there are and what they are doing."""

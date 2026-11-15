@@ -4,11 +4,11 @@ An interactive numerical laboratory for black hole physics, built one validated 
 from Newtonian gravity, through Schwarzschild and Kerr spacetimes, to electrical-engineering
 laboratories on top of them (RF links, signal processing, radio interferometry).
 
-**Status: early development — Stage 1, Checkpoint 1D-1.**
+**Status: early development — Stage 1, Checkpoint 1D-2.**
 The roadmap, and the verification status of every physics model, are in
 [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md).
 
-![The application window at Checkpoint 1D-1](docs/images/checkpoint-1d1.png)
+![The application window at Checkpoint 1D-2](docs/images/checkpoint-1d2.png)
 
 ## What works today
 
@@ -28,11 +28,14 @@ The roadmap, and the verification status of every physics model, are in
   motion, RK4, velocity Verlet and adaptive DOP853 with events, orbital elements, all tested against
   Kepler's laws and exact solutions.
 - **Particles in the window** (`bhlab.simulation`): enter a position and velocity, press Play, and
-  watch the particles move in real time at an adjustable speed. A particle that reaches r = 2 GM/c² is
-  stopped there: Newton's theory has no horizon, so that is where this model ends.
-- **Automated tests**: 411 of them, for the physics, the solvers, the simulation and the window.
+  watch the particles move in real time at an adjustable speed. Or switch on **Place** and drag on
+  the map: press where the particle starts and drag an arrow for its velocity, while a preview tells
+  you the orbit it will follow. Click a particle to select it, and remove it with Remove or Delete.
+  A particle that reaches r = 2 GM/c² is stopped there: Newton's theory has no horizon, so that is
+  where this model ends.
+- **Automated tests**: 448 of them, for the physics, the solvers, the simulation and the window.
 
-Not there yet: placing particles with the mouse, orbit trails, and relativity. Those arrive in later
+Not there yet: orbit trails, a panel for the selected particle, and relativity. Those arrive in later
 checkpoints, each one tested before the next begins.
 
 ## Quick start (Windows)

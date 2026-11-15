@@ -41,7 +41,8 @@ class Particle:
     """One particle as it is at the simulation's current time. Lengths in GM/c², speeds in c."""
 
     id: int
-    """Its number: 0 for the first particle added, then 1, 2, …"""
+    """Its number: 0 for the first particle added, then 1, 2, … A removed particle's number is
+    never given to another one."""
     state: State
     """(x, y, vₓ, v_y) now. For a stopped particle: the state in which it arrived."""
     initial_state: State
@@ -97,6 +98,7 @@ class Simulation:
         self._atol = atol
         self._time = 0.0
         self._bodies: list[_Body] = []
+        self._next_id = 0
 
     # --- what the simulation holds ------------------------------------------------------
 
@@ -120,11 +122,12 @@ class Simulation:
 
     # --- changing it --------------------------------------------------------------------
 
-    def add_particle(self, x: float, y: float, vx: float, vy: float) -> Particle:
-        """Add a particle that starts now at (x, y) with velocity (vₓ, v_y).
+    def check_start(self, x: float, y: float, vx: float, vy: float) -> State:
+        """The state (x, y, vₓ, v_y) if a particle may start with it; otherwise ValueError.
 
-        Raises ValueError, and adds nothing, if a value is not finite, if the particle would
-        start on or inside the stop radius, or if it would start at the speed of light or faster.
+        A value must be finite, the particle must start outside the stop radius and slower than
+        light. :meth:`add_particle` applies exactly this check, so a preview that calls it agrees
+        with what adding will do.
         """
         state = make_state(x, y, vx, vy)
         radius, speed = _radius(state), math.hypot(vx, vy)
@@ -138,10 +141,27 @@ class Simulation:
                 "A particle has to start slower than light, which is speed 1 in these units. "
                 f"This one would start at speed {speed:.4g}."
             )
+        return state
+
+    def add_particle(self, x: float, y: float, vx: float, vy: float) -> Particle:
+        """Add a particle that starts now at (x, y) with velocity (vₓ, v_y).
+
+        Raises ValueError, and adds nothing, if :meth:`check_start` refuses the values.
+        """
+        state = self.check_start(x, y, vx, vy)
         state.flags.writeable = False
-        body = _Body(len(self._bodies), state, self._time, self._new_stepper(state))
+        body = _Body(self._next_id, state, self._time, self._new_stepper(state))
+        self._next_id += 1
         self._bodies.append(body)
         return self._snapshot(body)
+
+    def remove_particle(self, particle_id: int) -> None:
+        """Remove the particle numbered ``particle_id``. Raises KeyError if there is none."""
+        for index, body in enumerate(self._bodies):
+            if body.id == particle_id:
+                del self._bodies[index]
+                return
+        raise KeyError(f"There is no particle number {particle_id}")
 
     def advance(self, duration: float, keep_going: Callable[[], bool] | None = None) -> bool:
         """Move the clock forward by ``duration``, and every particle with it.
